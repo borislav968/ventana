@@ -1,9 +1,11 @@
 #ifndef MOTOR_H
 #define MOTOR_H
 
-void init_driver_port ();
+extern volatile unsigned char state;
+extern volatile unsigned char speed;
+
+void init_motor_port ();
 void motor_stop ();
-void move_up ();
-void move_dn ();
+void motor_start ();
 
 #endif
