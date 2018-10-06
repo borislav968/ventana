@@ -48,20 +48,21 @@ int main () {
             switch (input) {
                 case CMD_UP:
                     if ((state & ST_DIR) && ((state & ST_EDGE) || (state & ST_MOVE))) break;
-                    if (state & ST_HOLD) {
+                    if (state & ST_MOVE) {
                         motor_stop();
+                        while (speed) {};
                     }
                     state &= ~(ST_EDGE | ST_HOLD);
-                    state |= ST_MOVE | ST_DIR;
+                    state |= ST_DIR;
                     motor_start();
                     break;
                 case CMD_DN:
                     if ((!(state & ST_DIR)) && ((state & ST_EDGE) || (state & ST_MOVE))) break;
-                    if (state & ST_HOLD) {
+                    if (state & ST_MOVE) {
                         motor_stop();
+                        while (speed) {};
                     }
                     state &= ~(ST_EDGE | ST_DIR | ST_HOLD);
-                    state |= ST_MOVE;                    
                     motor_start();
                     break;
                 case CMD_HOLD:
@@ -71,7 +72,6 @@ int main () {
                     break;
                 case 0:
                     if (!(state & ST_HOLD)) {
-                        state &= ~ST_MOVE;
                        motor_stop();
                     }
                     break;

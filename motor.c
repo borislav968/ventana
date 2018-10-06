@@ -36,6 +36,7 @@ ISR (TIMER0_OVF_vect) {
         TCCR1A = 0;
         TCCR1B = 0;
         TCCR2 = 0;
+        state &= ~ST_MOVE;
         asm("sei");
     }
 }
@@ -57,7 +58,7 @@ ISR (TIMER2_OVF_vect) {
 
 void motor_start () {
     // Enable speed up bit in status
-    state |= ST_SPDUP;
+    state |= ST_SPDUP | ST_MOVE;
     // Timer 0 is for motor speed increase/decrease
     // Prescaler is 1/1024 (101)
     TCCR0 = (1<<CS01);
