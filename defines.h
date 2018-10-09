@@ -1,3 +1,10 @@
+/*
+ * defines.h
+ *
+ * Created on: 27 сент. 2018 г.
+ *      Author: Borislav Malkov
+ */
+
 #ifndef DEFINES_H
 #define DEFINES_H
 

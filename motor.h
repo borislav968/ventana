@@ -1,3 +1,11 @@
+/*
+ * motor.h
+ *
+ * Created on: 27 сент. 2018 г.
+ *      Author: Borislav Malkov
+ */
+
+
 #ifndef MOTOR_H
 #define MOTOR_H
 

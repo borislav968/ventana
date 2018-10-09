@@ -1,5 +1,8 @@
 /*  
- *   motor.c
+ * motor.c
+ * 
+ * Created on: 27 сент. 2018 г.
+ *      Author: Borislav Malkov
  */
 
 #include <avr/io.h>
