@@ -15,7 +15,8 @@ COMPILE = avr-gcc -gdwarf-2 -g3 -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE)
 OBJCOPY = avr-objcopy
 
 AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) 
-FUSES = -U hfuse:w:0x64:m -U lfuse:w:0xdd:m
+#FUSES = -U hfuse:w:0x64:m -U lfuse:w:0xdd:m
+FUSES = -U hfuse:w:$(BUILD)/hfuse.hex:i -U lfuse:w:$(BUILD)/lfuse.hex:i -u
 
 .PHONY: all clean
 
@@ -37,7 +38,10 @@ $(BUILD)/$(PROJECT).hex: $(BUILD)/$(PROJECT).elf
 flash:	$(BUILD)/$(PROJECT).hex
 	$(AVRDUDE) -U flash:w:$(BUILD)/$(PROJECT).hex:i
 	
-fuse:
+fuse:	$(BUILD)/$(PROJECT).elf
+	avr-objcopy -j .fuse -O ihex $(BUILD)/$(PROJECT).elf $(BUILD)/fuses.hex --change-section-lma .fuse=0
+	srec_cat $(BUILD)/fuses.hex -Intel -crop 0x00 0x01 -offset  0x00 -O $(BUILD)/lfuse.hex -Intel
+	srec_cat $(BUILD)/fuses.hex -Intel -crop 0x01 0x02 -offset -0x01 -O $(BUILD)/hfuse.hex -Intel
 	$(AVRDUDE) $(FUSES)
 	
 $(shell [ -d $(BUILD) ] || mkdir $(BUILD))
