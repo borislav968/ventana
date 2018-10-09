@@ -4,7 +4,7 @@
 extern volatile unsigned char state;
 extern volatile unsigned char speed;
 
-void init_motor_port ();
+void init_motor ();
 void motor_stop ();
 void motor_start ();
 

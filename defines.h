@@ -7,6 +7,7 @@
 #define ST_EDGE     (1<<3)
 #define ST_SPDUP    (1<<4)
 
-#define T_DURATION  40
+// motor run max duration, ~seconds
+#define T_DURATION  10
 
 #endif

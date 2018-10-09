@@ -17,28 +17,9 @@
 
 volatile unsigned int cnt = 0;
 
-void init_sensor () {
-    // PD6 and PD7 pins are inputs without pull-up
-    PORTD &= ~((1<<PD6) | (1<<PD7));
-    DDRD  &= ~((1<<PD6) | (1<<PD7));
-    // Enable comparator multiplexer
-    SFIOR &= ~(1<<ACME);
-    // Enable interrupt on falling edge
-    ACSR  |=  (1<<ACIS1) | (1<<ACIE);    
-}
-
-// Comparator output falling edge
-// Occurs when voltage at AIN1 > AIN0 (motor overload)
-ISR (ANA_COMP_vect) {
-    state |= ST_EDGE;
-    speed = 0;
-    motor_stop();
-}
-
 int main () {
-    init_motor_port();
+    init_motor();
     init_switch_port();
-    init_sensor();
     asm("sei");
     unsigned char input = 0, prev = 0;
     while (1) {
