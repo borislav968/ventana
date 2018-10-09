@@ -10,6 +10,7 @@
 #include "motor.h"
 #include "switch.h"
 #include "defines.h"
+#include "fuses.h"
 
 #define CMD_UP      (1<<0)
 #define CMD_DN      (1<<1)

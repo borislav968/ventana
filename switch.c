@@ -7,14 +7,15 @@
 
 
 #include <avr/io.h>
+#include "defines.h"
 
-#define SW_MASK ((1<<PD0) | (1<<PD1))
+#define SW_MASK ((1<<SW_0) | (1<<SW_1))
 
 void init_switch_port () {
-    PORTD = SW_MASK;
-    DDRD &= ~SW_MASK;
+    SW_PORT |= SW_MASK;
+    SW_DDR &= ~SW_MASK;
 }
 
 unsigned char poll_switch () {
-    return (~(PIND) & SW_MASK);
+    return (~(SW_PIN) & SW_MASK);
 }
