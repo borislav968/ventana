@@ -32,22 +32,35 @@ int main () {
             prev = input;
             switch (input) {
                 case CMD_UP:
-                    if ((state & ST_DIR) && ((state & ST_EDGE) || (state & ST_MOVE))) break;
-                    if (state & ST_MOVE) {
-                        motor_stop();
-                        while (speed) {};
+                    if (state & ST_DIR) {           // if direction is the same in state
+                        if (state & ST_EDGE) break; // do nothing if it already has reached the edge
+                        if (state & ST_MOVE) {      // restart motor if it was in spindown state
+                            motor_start();
+                            break;
+                        }
                     }
-                    state &= ~(ST_EDGE | ST_HOLD);
-                    state |= ST_DIR;
+                    if (state & ST_MOVE) {          // if direction was other in state
+                        motor_stop();               // spin the motor down
+                        while (speed) {};           // wait for it to stop
+                    }
+                    state &= ~(ST_EDGE | ST_HOLD);  // clear edge and hold flags
+                    state |= ST_DIR;                // start motor in needed direction
                     motor_start();
                     break;
                 case CMD_DN:
-                    if ((!(state & ST_DIR)) && ((state & ST_EDGE) || (state & ST_MOVE))) break;
-                    if (state & ST_MOVE) {
-                        motor_stop();
-                        while (speed) {};
+                    if (!(state & ST_DIR)) {           // if direction is the same in state
+                        if (state & ST_EDGE) break; // do nothing if it already has reached the edge
+                        if (state & ST_MOVE) {      // restart motor if it was in spindown state
+                            motor_start();
+                            break;
+                        }
                     }
-                    state &= ~(ST_EDGE | ST_DIR | ST_HOLD);
+                    if (state & ST_MOVE) {          // if direction was other in state
+                        motor_stop();               // spin the motor down
+                        while (speed) {};           // wait for it to stop
+                    }
+                    state &= ~(ST_EDGE | ST_HOLD);  // clear edge and hold flags
+                    state &= ~ST_DIR;                // start motor in needed direction
                     motor_start();
                     break;
                 case CMD_HOLD:
