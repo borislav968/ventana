@@ -76,16 +76,13 @@ ISR (TIMER0_COMP_vect) {
     if (speed == 0) {
         MT_PORT &= ~((1<<MT_UL) | (1<<MT_UR));
         // Disable timers
-        TIMSK &= ~((1<<TOIE0) | (1<<TOIE2));
+        TIMSK &= ~((1<<OCIE0) | (1<<TOIE2));
         TCCR0 = 0;
         TCCR1A = 0;
         TCCR1B = 0;
         TCCR2 = 0;
         // Clear ST_MOVE flag
         state &= ~ST_MOVE;
-        // Important thing: since timer interrupts (including this one) are
-        // disabled during the interrupt, we need to do SEI in order to return from here
-        asm("sei");
     }
 }
 
@@ -101,8 +98,7 @@ ISR (TIMER2_OVF_vect) {
         state |= ST_EDGE;
         // Immediate stop without soft spindown
         speed = 0;
-        motor_stop();
-        asm("sei");
+        state &= ~ST_SPDUP;
     }
 }
 
