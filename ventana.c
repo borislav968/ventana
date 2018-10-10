@@ -23,8 +23,11 @@ int main () {
     init_switch_port();
     asm("sei");
     unsigned char input = 0, prev = 0;
+    unsigned int i;
     while (1) {
+        i = 1024;
         input = poll_switch();
+        while (i>0) i--;
         if (input != prev) {
             prev = input;
             switch (input) {
