@@ -22,18 +22,8 @@ volatile unsigned char duration;
 
 // Port setup for driver's output
 void init_out () {
-    //  Signal  M8  M16
-    //  OC1A    PB1 PD4
-    //  OC1B    PB2 PD5
-    #if defined __AVR_ATmega8__
-        PORTB &= ~((1<<PB1) | (1<<PB2));
-        DDRB |= (1<<PB1) | (1<<PB2);
-    #elif defined __AVR_ATmega16__
-        PORTD &= ~((1<<PD4) | (1<<PD5));
-        DDRD |= (1<<PD4) | (1<<PD5);
-    # else
-        #error "This source is for atmega8 and atmega16 MCUs"
-    #endif
+        MT_PORT |= (1<<MT_LL) | (1<<MT_LR);
+        MT_DDR |= (1<<MT_UL) | (1<<MT_UR) | (1<<MT_LL) | (1<<MT_LR);
 }
 
 // Comparator set up for motor current sense for stopping it at edges
@@ -59,7 +49,7 @@ void init_sensor () {
 // I/O init. Has to be invoked at main program start
 void init_motor () {
     init_out ();
-    init_sensor ();
+    //init_sensor ();
 }
 
 // Soft stop - just remove ST_SPDUP bit
@@ -70,7 +60,7 @@ void motor_stop () {
 
 // Timer 0 interrupt
 // PWM control routine
-ISR (TIMER0_OVF_vect) {
+ISR (TIMER0_COMP_vect) {
     // Increase or decrease speed depending on ST_SPDUP
     if (state & ST_SPDUP) {
         if (speed < 0xFF) speed++;
@@ -84,6 +74,7 @@ ISR (TIMER0_OVF_vect) {
     OCR1B = speed;
     // Complete stop routine
     if (speed == 0) {
+        MT_PORT &= ~((1<<MT_UL) | (1<<MT_UR));
         // Disable timers
         TIMSK &= ~((1<<TOIE0) | (1<<TOIE2));
         TCCR0 = 0;
@@ -129,9 +120,11 @@ void motor_start () {
     state |= ST_SPDUP | ST_MOVE;
     // Timer 0 is for motor speed increase/decrease
     // Prescaler is 1/1024 (101) ~3.8Hz
-    TCCR0 = (1<<CS01);
+    TCCR0 = (1<<CS01) | (1<<CS00) | (1<<WGM01);
+    OCR0 = 32;
     // Enable timer 0 overflow interrupt
-    TIMSK |= (1<<TOIE0);
+    //TIMSK |= (1<<TOIE0);
+    TIMSK |= (1<<OCIE0);
     // Timer 1 is used for PWM control of the motor
     // Mode 5 - fast PWM 8-bit with top at 0xFF
     TCCR1A = (1<<WGM10);
@@ -141,10 +134,18 @@ void motor_start () {
     TCCR1B |= (1<<CS10);
     // Now raising COM1A1 and COM1B1 in TCCR1A will connect PB1 or PB2 to the timer
     // Duty can be adjusted by changing OCR1A and OCR1B    
-    if (state & ST_DIR)
-        TCCR1A |= (1<<COM1A1);
+    if (state & ST_DIR) 
+    {
+        PORTD |= (1<<MT_UL) | (1<<MT_LR);
+        PORTD &= ~(1<<MT_UR);
+        TCCR1A |= (1<<COM1A0) | (1<<COM1A1);
+    }
     else
-        TCCR1A |= (1<<COM1B1);
+    {
+        PORTD |= (1<<MT_UR) | (1<<MT_LL);
+        PORTD &= ~(1<<MT_UL);        
+        TCCR1A |= (1<<COM1B0) | (1<<COM1B1);
+    }
     // Timer 2 is for motor run time limiting (e.g. if stop by current sensor comparator didn't happen)
     TCCR2 = (1<<CS22) | (1<<CS21) | (1<<CS20); // Set prescaling to 1/1024 ~ 3.8 overflows/sec
     TIMSK |= (1<<TOIE2); // Allow overflow interrupt    
