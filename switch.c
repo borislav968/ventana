@@ -17,5 +17,12 @@ void init_switch_port () {
 }
 
 unsigned char poll_switch () {
+    unsigned char same = 0;
+    unsigned char this = 0, last = 0;
+    while (same < 5) {
+        this = SW_PIN;
+        if (this == last) same++;
+        last = this;
+    }
     return (~(SW_PIN) & SW_MASK);
 }
