@@ -121,7 +121,7 @@ void motor_start () {
     // Timer 0 is for motor speed increase/decrease
     // Prescaler is 1/1024 (101) ~3.8Hz
     TCCR0 = (1<<CS01) | (1<<CS00) | (1<<WGM01);
-    OCR0 = 32;
+    OCR0 = T_SPEEDUP * 64;
     // Enable timer 0 overflow interrupt
     //TIMSK |= (1<<TOIE0);
     TIMSK |= (1<<OCIE0);

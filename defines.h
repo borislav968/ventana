@@ -45,5 +45,7 @@
 
 // motor run max duration, ~seconds
 #define T_DURATION  10
+// motor spinup/spindown time, ~seconds
+#define T_SPEEDUP   0.5
 
 #endif
