@@ -15,29 +15,38 @@
 #define ST_SPDUP    (1<<4)
 
 #if defined __AVR_ATmega8__
-    #define SW_PORT PORTD
-    #define SW_DDR  DDRD
-    #define SW_PIN  PIND
-    #define SW_0    PD0
-    #define SW_1    PD1
-    #define MT_PORT PORTB
-    #define MT_DDR  DDRB
-    #define MT_UL   PB0
-    #define MT_UR   PB3
-    #define MT_LL   PB1
-    #define MT_LR   PB2
+    #define SW_PORT     PORTD
+    #define SW_DDR      DDRD
+    #define SW_PIN      PIND
+    #define SW_0        PD0
+    #define SW_1        PD1
+    #define MT_PORT     PORTB
+    #define MT_DDR      DDRB
+    #define MT_UL       PB0
+    #define MT_UR       PB3
+    #define MT_LL       PB1
+    #define MT_LR       PB2
+    #define CMP_PORT    PORTD
+    #define CMP_DDR     DDRD
+    #define AIN0        PD6
+    #define AIN1        PD7
+
 #elif defined __AVR_ATmega16__
-    #define SW_PORT PORTA
-    #define SW_DDR  DDRA
-    #define SW_PIN  PINA    
-    #define SW_0    PA0
-    #define SW_1    PA1
-    #define MT_PORT PORTD
-    #define MT_DDR  DDRD
-    #define MT_UL   PD6
-    #define MT_UR   PD7
-    #define MT_LL   PD4
-    #define MT_LR   PD5
+    #define SW_PORT     PORTA
+    #define SW_DDR      DDRA
+    #define SW_PIN      PINA    
+    #define SW_0        PA0
+    #define SW_1        PA1
+    #define MT_PORT     PORTD
+    #define MT_DDR      DDRD
+    #define MT_UL       PD6
+    #define MT_UR       PD7
+    #define MT_LL       PD4
+    #define MT_LR       PD5
+    #define CMP_PORT    PORTB
+    #define CMP_DDR     DDRB
+    #define AIN0        PB2
+    #define AIN1        PB3
 # else
     #error "This source is for atmega8 and atmega16 MCUs"
 #endif

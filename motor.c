@@ -22,38 +22,29 @@ volatile unsigned char duration;
 
 // Port setup for driver's output
 void init_out () {
-        MT_PORT |= (1<<MT_LL) | (1<<MT_LR);
-        MT_DDR |= (1<<MT_UL) | (1<<MT_UR) | (1<<MT_LL) | (1<<MT_LR);
+    MT_PORT |= (1<<MT_LL) | (1<<MT_LR);
+    MT_DDR |= (1<<MT_UL) | (1<<MT_UR) | (1<<MT_LL) | (1<<MT_LR);
 }
 
-// Comparator set up for motor current sense for stopping it at edges
+// Comparator set up for motor current measurement for stopping it at edges
 void init_sensor () {
-    //  Signal  M8  M16
-    //  AIN0    PD6 PB2
-    //  AIN1    PD7 PB3
-    #if defined __AVR_ATmega8__
-        PORTD &= ~((1<<PD6) | (1<<PD7));
-        DDRD  &= ~((1<<PD6) | (1<<PD7));
-    #elif defined __AVR_ATmega16__
-        PORTB &= ~((1<<PB2) | (1<<PB3));
-        DDRB  &= ~((1<<PB2) | (1<<PB3));
-    # else
-        #error "This source is for atmega8 and atmega16 MCUs"
-    #endif
+    CMP_PORT &= ~((1<<AIN0) | (1<<AIN1));
+    CMP_DDR  &= ~((1<<AIN0) | (1<<AIN1));
     // Enable comparator multiplexer
     SFIOR &= ~(1<<ACME);
     // Enable interrupt on falling edge
+    // Will fire if AIN0 > AIN1 (AIN1 has to be on tunable reference voltage)
     ACSR  |=  (1<<ACIS1) | (1<<ACIE);    
 }
 
 // I/O init. Has to be invoked at main program start
 void init_motor () {
     init_out ();
-    //init_sensor ();
+    init_sensor ();
 }
 
 // Soft stop - just remove ST_SPDUP bit
-// The rest will be done in Timer 0 overflow interrupt
+// The rest will be done in Timer 0 interrupt
 void motor_stop () {
     state &= ~ST_SPDUP;
 }
@@ -69,9 +60,8 @@ ISR (TIMER0_COMP_vect) {
     {
         if (speed > 0) speed--;
     };
-    // Set PWM duty on both channels
-    OCR1A = speed;
-    OCR1B = speed;
+    // Set PWM duty on appropriate channel
+    *(state & ST_DIR ? &OCR1A : &OCR1B) = speed;
     // Complete stop routine
     if (speed == 0) {
         MT_PORT &= ~((1<<MT_UL) | (1<<MT_UR));
@@ -115,7 +105,7 @@ void motor_start () {
     // Enable speed up and move bits in status
     state |= ST_SPDUP | ST_MOVE;
     // Timer 0 is for motor speed increase/decrease
-    // Prescaler is 1/1024 (101) ~3.8Hz
+    // Prescaler is 1/64 (011)
     TCCR0 = (1<<CS01) | (1<<CS00) | (1<<WGM01);
     OCR0 = T_SPEEDUP * 64;
     // Enable timer 0 overflow interrupt
