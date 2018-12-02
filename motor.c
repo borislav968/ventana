@@ -19,6 +19,8 @@ volatile unsigned char speed = 0;
 volatile unsigned char duration;
 
 
+#define PWM_RES 0x3F
+
 
 // Port setup for driver's output
 void init_out () {
@@ -54,7 +56,7 @@ void motor_stop () {
 ISR (TIMER0_COMP_vect) {
     // Increase or decrease speed depending on ST_SPDUP
     if (state & ST_SPDUP) {
-        if (speed < 0xFF) speed++;
+        if (speed < PWM_RES) speed++;
     }
     else
     {
@@ -105,18 +107,19 @@ void motor_start () {
     // Enable speed up and move bits in status
     state |= ST_SPDUP | ST_MOVE;
     // Timer 0 is for motor speed increase/decrease
-    // Prescaler is 1/64 (011)
-    TCCR0 = (1<<CS01) | (1<<CS00) | (1<<WGM01);
+    // Prescaler is 1/256 (100)
+    TCCR0 = (1<<CS02) | (1<<WGM01);
     OCR0 = T_SPEEDUP * 64;
     // Enable timer 0 overflow interrupt
     //TIMSK |= (1<<TOIE0);
     TIMSK |= (1<<OCIE0);
     // Timer 1 is used for PWM control of the motor
-    // Mode 5 - fast PWM 8-bit with top at 0xFF
-    TCCR1A = (1<<WGM10);
-    TCCR1B = (1<<WGM12);
+    // Mode 14 - fast PWM with top at ICR1
+    ICR1 = PWM_RES;
+    TCCR1A = (1<<WGM11);
+    TCCR1B = (1<<WGM12) | (WGM13);
     // Timer 1 prescaler 1 (001)
-    // F_PWM will be F_CPU/(N*(TOP+1)) = 1000000/256 = 3906.25 Hz
+    // F_PWM will be F_CPU/(N*(TOP+1)) = 1000000/64 = 15625 Hz
     TCCR1B |= (1<<CS10);
     // Now raising COM1A1 and COM1B1 in TCCR1A will connect PB1 or PB2 to the timer
     // Duty can be adjusted by changing OCR1A and OCR1B    
