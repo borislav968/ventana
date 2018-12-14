@@ -22,8 +22,8 @@
     #define SW_1        PD1
     #define MT_PORT     PORTB
     #define MT_DDR      DDRB
-    #define MT_UL       PB0
-    #define MT_UR       PB3
+    #define MT_UL       PB3
+    #define MT_UR       PB0
     #define MT_LL       PB1
     #define MT_LR       PB2
     #define CMP_PORT    PORTD
@@ -54,7 +54,5 @@
 
 // motor run max duration, ~seconds
 #define T_DURATION  10
-// motor spinup/spindown time, ~seconds
-#define T_SPEEDUP   0.5
 
 #endif

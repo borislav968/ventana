@@ -53,7 +53,8 @@ void motor_stop () {
 
 // Timer 0 interrupt
 // PWM control routine
-ISR (TIMER0_COMP_vect) {
+ISR (TIMER0_OVF_vect) {
+    unsigned char s = speed;
     // Increase or decrease speed depending on ST_SPDUP
     if (state & ST_SPDUP) {
         if (speed < PWM_RES) speed++;
@@ -63,12 +64,13 @@ ISR (TIMER0_COMP_vect) {
         if (speed > 0) speed--;
     };
     // Set PWM duty on appropriate channel
-    *(state & ST_DIR ? &OCR1A : &OCR1B) = speed;
+    if (s != speed) *(state & ST_DIR ? &OCR1A : &OCR1B) = speed;
     // Complete stop routine
     if (speed == 0) {
         MT_PORT &= ~((1<<MT_UL) | (1<<MT_UR));
         // Disable timers
-        TIMSK &= ~((1<<OCIE0) | (1<<TOIE2));
+        //TIMSK &= ~((1<<OCIE0) | (1<<TOIE2));
+        TIMSK &= ~((1<<TOIE0) | (1<<TOIE2));
         TCCR0 = 0;
         TCCR1A = 0;
         TCCR1B = 0;
@@ -107,17 +109,15 @@ void motor_start () {
     // Enable speed up and move bits in status
     state |= ST_SPDUP | ST_MOVE;
     // Timer 0 is for motor speed increase/decrease
-    // Prescaler is 1/256 (100)
-    TCCR0 = (1<<CS02) | (1<<WGM01);
-    OCR0 = T_SPEEDUP * 64;
+    // Spinup time = PWM_RES * ((N*256)/F_CPU)
+    TCCR0 |= (1<<CS01) | (1<<CS00);
     // Enable timer 0 overflow interrupt
-    //TIMSK |= (1<<TOIE0);
-    TIMSK |= (1<<OCIE0);
+    TIMSK |= (1<<TOIE0);
     // Timer 1 is used for PWM control of the motor
     // Mode 14 - fast PWM with top at ICR1
-    ICR1 = PWM_RES;
     TCCR1A = (1<<WGM11);
-    TCCR1B = (1<<WGM12) | (WGM13);
+    TCCR1B = (1<<WGM12) | (1<<WGM13);
+    ICR1 = PWM_RES;
     // Timer 1 prescaler 1 (001)
     // F_PWM will be F_CPU/(N*(TOP+1)) = 1000000/64 = 15625 Hz
     TCCR1B |= (1<<CS10);
@@ -125,14 +125,14 @@ void motor_start () {
     // Duty can be adjusted by changing OCR1A and OCR1B    
     if (state & ST_DIR) 
     {
-        PORTD |= (1<<MT_UL) | (1<<MT_LR);
-        PORTD &= ~(1<<MT_UR);
+        MT_PORT |= (1<<MT_UL) | (1<<MT_LR);
+        MT_PORT &= ~(1<<MT_UR);
         TCCR1A |= (1<<COM1A0) | (1<<COM1A1);
     }
     else
     {
-        PORTD |= (1<<MT_UR) | (1<<MT_LL);
-        PORTD &= ~(1<<MT_UL);        
+        MT_PORT |= (1<<MT_UR) | (1<<MT_LL);
+        MT_PORT &= ~(1<<MT_UL);        
         TCCR1A |= (1<<COM1B0) | (1<<COM1B1);
     }
     // Timer 2 is for motor run time limiting (e.g. if stop by current sensor comparator didn't happen)

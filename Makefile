@@ -1,7 +1,7 @@
-#DEVICE = atmega8
-#DEVICE_PROG = m8
-DEVICE = atmega16
-DEVICE_PROG = atmega16
+DEVICE = atmega8
+DEVICE_PROG = m8
+#DEVICE = atmega16
+#DEVICE_PROG = atmega16
 CLOCK = 1000000
 PORT = /dev/ttyUSB0
 BAUD = 19200
@@ -37,7 +37,10 @@ $(BUILD)/$(PROJECT).hex: $(BUILD)/$(PROJECT).elf
 
 flash:	$(BUILD)/$(PROJECT).hex
 	$(AVRDUDE) -U flash:w:$(BUILD)/$(PROJECT).hex:i
-	
+
+verify:	$(BUILD)/$(PROJECT).hex
+	$(AVRDUDE) -U flash:v:$(BUILD)/$(PROJECT).hex:i
+
 fuse:	$(BUILD)/$(PROJECT).elf
 	avr-objcopy -j .fuse -O ihex $(BUILD)/$(PROJECT).elf $(BUILD)/fuses.hex --change-section-lma .fuse=0
 	srec_cat $(BUILD)/fuses.hex -Intel -crop 0x00 0x01 -offset  0x00 -O $(BUILD)/lfuse.hex -Intel
