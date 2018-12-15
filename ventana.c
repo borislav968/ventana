@@ -21,8 +21,6 @@ volatile unsigned int cnt = 0;
 int main () {
     init_motor();
     init_switch_port();
-    // mega8 debug
-    DDRC |= (1<<PINC0) | (1<<PINC1);
     asm("sei");
     unsigned char input = 0, prev = 0;
     while (1) {

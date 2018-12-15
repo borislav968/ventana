@@ -14,6 +14,9 @@
 #define ST_EDGE     (1<<3)
 #define ST_SPDUP    (1<<4)
 
+// The device uses ATMega8, but schematic was initially being tested on ATMega16 pinboard,
+// so the code is for both MCUs now.
+
 #if defined __AVR_ATmega8__
     #define SW_PORT     PORTD
     #define SW_DDR      DDRD
@@ -22,8 +25,8 @@
     #define SW_1        PD1
     #define MT_PORT     PORTB
     #define MT_DDR      DDRB
-    #define MT_UL       PB3
-    #define MT_UR       PB0
+    #define MT_UL       PB0
+    #define MT_UR       PB3
     #define MT_LL       PB1
     #define MT_LR       PB2
     #define CMP_PORT    PORTD
