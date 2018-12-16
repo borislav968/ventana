@@ -20,7 +20,8 @@ volatile unsigned char duration;
 
 // PWM resolution - the bigger it is, the lower will be PWM frequency.
 // Freq = F_CPU/PWM_RES+1 (15625Hz)
-#define PWM_RES 0x3F
+// Also affects spinup/spindown time
+#define PWM_RES 0x2F
 
 
 // Port setup for driver's output
@@ -60,11 +61,15 @@ ISR (TIMER0_OVF_vect) {
     unsigned char s = speed;
     // Increase or decrease speed depending on ST_SPDUP
     if (state & ST_SPDUP) {
-        if (speed < PWM_RES) speed++;
+        // Here can be simply increment of speed, but to get the drive started
+        // it's better to reach something like 25% of power asap, and then increment it.
+        if (speed < (PWM_RES>>2)) speed += 4; else speed++;
     }
     else
     {
-        if (speed > 0) speed--;
+        // Feels better when the drive stops faster than starts, so speed decreases 4x faster
+        // Lower than ~25% of power there's no need to slowly decrease - the window may be actually stopped already
+        if (speed > (PWM_RES>>2)) speed -= 4; else speed = 0;
     };
     // Set PWM duty on appropriate channel
     if (s != speed) *(state & ST_DIR ? &OCR1A : &OCR1B) = speed;
