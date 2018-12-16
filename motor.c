@@ -135,7 +135,7 @@ void motor_start () {
     else
     {
         MT_PORT |= (1<<MT_LL);                  // close lower left first
-        MT_PORT &= ~(1<<MT_UL);                 // open upper left after. Not vice versa - will cause short circuit!
+        MT_PORT |= (1<<MT_UL);                 // open upper left after. Not vice versa - will cause short circuit!
         TCCR1A |= (1<<COM1B0) | (1<<COM1B1);    // connect channel B (lower right) to the PWM timer
     }
     // Timer 2 is for motor run time limiting (e.g. if stop by current sensor comparator didn't happen)
