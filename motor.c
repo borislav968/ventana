@@ -40,7 +40,7 @@ void init_sensor () {
     SFIOR &= ~(1<<ACME);
     // Enable interrupt on falling edge
     // Will fire if AIN0 > AIN1 (AIN1 has to be on tunable reference voltage)
-    ACSR  |=  (1<<ACIS1) | (1<<ACIE);    
+    ACSR  |=  (1<<ACIS1);    
 }
 
 // I/O init. Has to be invoked at main program start
@@ -77,12 +77,16 @@ ISR (TIMER0_OVF_vect) {
     if (speed == 0) {
         // Disable upper bridge drivers
         MT_PORT &= ~((1<<MT_UL) | (1<<MT_UR));
+        // Enable lower bridge drivers for energy saving
+        MT_PORT &= ~((1<<MT_LL) | (1<<MT_LR));
         // Disable timers
         TIMSK &= ~((1<<TOIE0) | (1<<TOIE2));
         TCCR0 = 0;
         TCCR1A = 0;
         TCCR1B = 0;
         TCCR2 = 0;
+        // Disable comparator
+        ACSR &= ~(1<<ACIE);
         // Clear ST_MOVE flag
         state &= ~ST_MOVE;
     }
@@ -113,6 +117,8 @@ ISR (ANA_COMP_vect) {
 }
 
 void motor_start () {
+    // Enable comparator interrupt for overcurrent protection
+    ACSR |= (1<<ACIE);
     // Enable speed up and move bits in status
     state |= ST_SPDUP | ST_MOVE;
     // Timer 0 is for motor speed increase/decrease
