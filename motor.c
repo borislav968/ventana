@@ -23,32 +23,6 @@ volatile unsigned char duration;
 // Also affects spinup/spindown time
 #define PWM_RES 0x2F
 
-
-// Port setup for driver's output
-void init_out () {
-    // output pins for drivers
-    MT_DDR |= (1<<MT_UL) | (1<<MT_UR) | (1<<MT_LL) | (1<<MT_LR);
-    // Important: due to different type MOSFETs in upper and lower halves of the bridge,
-    // upper ones are open with logical 1, and lower ones open with logical 0.
-}
-
-// Comparator set up for motor current measurement for stopping it at edges
-void init_sensor () {
-    CMP_PORT &= ~((1<<AIN0) | (1<<AIN1));
-    CMP_DDR  &= ~((1<<AIN0) | (1<<AIN1));
-    // Enable comparator multiplexer
-    SFIOR &= ~(1<<ACME);
-    // Enable interrupt on falling edge
-    // Will fire if AIN0 > AIN1 (AIN1 has to be on tunable reference voltage)
-    ACSR  |=  (1<<ACIS1);    
-}
-
-// I/O init. Has to be invoked at main program start
-void init_motor () {
-    init_out ();
-    init_sensor ();
-}
-
 // Soft stop - just remove ST_SPDUP bit
 // The rest will be done in Timer 0 interrupt
 void motor_stop () {
@@ -87,6 +61,9 @@ ISR (TIMER0_OVF_vect) {
         TCCR2 = 0;
         // Disable comparator
         ACSR &= ~(1<<ACIE);
+        ACSR |= (1<<ACD);
+        // Disable output port
+        MT_DDR = 0;
         // Clear ST_MOVE flag
         state &= ~ST_MOVE;
     }
@@ -117,8 +94,22 @@ ISR (ANA_COMP_vect) {
 }
 
 void motor_start () {
+    // Set up comparator input pins
+    CMP_PORT &= ~((1<<AIN0) | (1<<AIN1));
+    CMP_DDR  &= ~((1<<AIN0) | (1<<AIN1));
+    // Enable analog comparator
+    ACSR &= ~(1<<ACD);
+    // Enable comparator multiplexer
+    SFIOR &= ~(1<<ACME);
+    // Enable interrupt on falling edge
+    // Will fire if AIN0 > AIN1 (AIN1 has to be on tunable reference voltage)
+    ACSR  |=  (1<<ACIS1);
     // Enable comparator interrupt for overcurrent protection
     ACSR |= (1<<ACIE);
+    // output pins for drivers
+    MT_DDR |= (1<<MT_UL) | (1<<MT_UR) | (1<<MT_LL) | (1<<MT_LR);
+    // Important: due to different type MOSFETs in upper and lower halves of the bridge,
+    // upper ones are open with logical 1, and lower ones open with logical 0.
     // Enable speed up and move bits in status
     state |= ST_SPDUP | ST_MOVE;
     // Timer 0 is for motor speed increase/decrease

@@ -19,8 +19,9 @@
 volatile unsigned int cnt = 0;
 
 int main () {
-    init_motor();
     init_switch_port();
+    // Disable analog comparator for energy saving
+    ACSR |= (1<<ACD);
     asm("sei");
     unsigned char input = 0, prev = 0;
     while (1) {
