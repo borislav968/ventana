@@ -58,7 +58,7 @@ int main () {
                         while (speed) {};           // wait for it to stop
                     }
                     state &= ~(ST_EDGE | ST_HOLD);  // clear edge and hold flags
-                    state &= ~ST_DIR;                // start motor in needed direction
+                    state &= ~ST_DIR;               // start motor in needed direction
                     motor_start();
                     break;
                 case CMD_HOLD:
@@ -69,6 +69,7 @@ int main () {
                 case 0:
                     if (!(state & ST_HOLD)) {
                         motor_stop();
+                        while (speed) {};
                     }
                     break;
                 default:

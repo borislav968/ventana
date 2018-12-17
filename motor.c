@@ -81,7 +81,7 @@ ISR (TIMER2_OVF_vect) {
         state |= ST_EDGE;
         // Immediate stop without soft spindown
         speed = 0;
-        state &= ~ST_SPDUP;
+        state &= ~(ST_SPDUP | ST_HOLD);
     }
 }
 
@@ -90,7 +90,7 @@ ISR (TIMER2_OVF_vect) {
 ISR (ANA_COMP_vect) {
     state |= ST_EDGE;
     speed = 0;
-    motor_stop();
+    state &= ~(ST_SPDUP | ST_HOLD);
 }
 
 void motor_start () {
