@@ -34,7 +34,7 @@ void motor_stop () {
 ISR (TIMER0_OVF_vect) {
     unsigned char s = speed;
     // Increase or decrease speed depending on ST_SPDUP
-    if (state & ST_SPDUP) {
+    if ((state & ST_SPDUP) && (speed < PWM_RES)) {
         // Here can be simply increment of speed, but to get the drive started
         // it's better to reach something like 25% of power asap, and then increment it.
         if (speed < (PWM_RES>>2)) speed += 4; else speed++;
@@ -141,7 +141,7 @@ void motor_start () {
         TCCR1A |= (1<<COM1B0) | (1<<COM1B1);    // connect channel B (lower right) to the PWM timer
     }
     // Timer 2 is for motor run time limiting (e.g. if stop by current sensor comparator didn't happen)
+    duration = T_DURATION * 3.8;
     TCCR2 = (1<<CS22) | (1<<CS21) | (1<<CS20); // Set prescaling to 1/1024 ~ 3.8 overflows/sec
     TIMSK |= (1<<TOIE2); // Allow overflow interrupt    
-    duration = T_DURATION * 3.8;    
 }

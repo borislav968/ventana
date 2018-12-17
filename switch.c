@@ -36,6 +36,6 @@ void init_switch_port () {
     if (poll_switch() == CMD_HOLD) {
         dir = dir ^ 1;
         eeprom_write_byte(0, dir);
-        //while (poll_switch());
+        while (poll_switch());
     }
 }

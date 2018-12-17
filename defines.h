@@ -59,9 +59,8 @@
 # else
     #error "This source is for atmega8 and atmega16 MCUs"
 #endif
-    
 
 // motor run max duration, ~seconds
-#define T_DURATION  10
+#define T_DURATION 6
 
 #endif
