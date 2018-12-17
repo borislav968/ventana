@@ -15,6 +15,46 @@
 
 volatile unsigned int cnt = 0;
 
+void moveup () {
+    if (state & ST_DIR) {           // if direction is the same in state
+        if (state & ST_EDGE) return; // do nothing if it already has reached the edge
+        if (state & ST_MOVE) {      // restart motor if it was in spindown state
+            motor_start();
+            return;
+        }
+    }
+    if (state & ST_MOVE) {          // if direction was other in state
+        motor_stop();               // spin the motor down
+        while (speed) {};           // wait for it to stop
+    }
+    state &= ~(ST_EDGE | ST_HOLD);  // clear edge and hold flags
+    state |= ST_DIR;                // start motor in needed direction
+    motor_start();
+}
+
+void movedn () {
+    if (!(state & ST_DIR)) {           // if direction is the same in state
+        if (state & ST_EDGE) return; // do nothing if it already has reached the edge
+        if (state & ST_MOVE) {      // restart motor if it was in spindown state
+            motor_start();
+            return;
+        }
+    }
+    if (state & ST_MOVE) {          // if direction was other in state
+        motor_stop();               // spin the motor down
+        while (speed) {};           // wait for it to stop
+    }
+    state &= ~(ST_EDGE | ST_HOLD);  // clear edge and hold flags
+    state &= ~ST_DIR;               // start motor in needed direction
+    motor_start();
+}
+
+void hold () {
+    if (state & (ST_EDGE | ST_MOVE)) {
+        state |= ST_HOLD;
+    }
+}
+
 int main () {
     init_switch_port();
     // Disable analog comparator for energy saving
@@ -27,41 +67,17 @@ int main () {
             prev = input;
             switch (input) {
                 case CMD_UP:
-                    if (state & ST_DIR) {           // if direction is the same in state
-                        if (state & ST_EDGE) break; // do nothing if it already has reached the edge
-                        if (state & ST_MOVE) {      // restart motor if it was in spindown state
-                            motor_start();
-                            break;
-                        }
-                    }
-                    if (state & ST_MOVE) {          // if direction was other in state
-                        motor_stop();               // spin the motor down
-                        while (speed) {};           // wait for it to stop
-                    }
-                    state &= ~(ST_EDGE | ST_HOLD);  // clear edge and hold flags
-                    state |= ST_DIR;                // start motor in needed direction
-                    motor_start();
+                    moveup();
                     break;
                 case CMD_DN:
-                    if (!(state & ST_DIR)) {           // if direction is the same in state
-                        if (state & ST_EDGE) break; // do nothing if it already has reached the edge
-                        if (state & ST_MOVE) {      // restart motor if it was in spindown state
-                            motor_start();
-                            break;
-                        }
-                    }
-                    if (state & ST_MOVE) {          // if direction was other in state
-                        motor_stop();               // spin the motor down
-                        while (speed) {};           // wait for it to stop
-                    }
-                    state &= ~(ST_EDGE | ST_HOLD);  // clear edge and hold flags
-                    state &= ~ST_DIR;               // start motor in needed direction
-                    motor_start();
+                    movedn();
                     break;
                 case CMD_HOLD:
-                    if (state & (ST_EDGE | ST_MOVE)) {
-                        state |= ST_HOLD;
-                    }
+                    hold();
+                    break;
+                case CMD_CLOSE:
+                    moveup();
+                    hold();
                     break;
                 case 0:
                     if (!(state & ST_HOLD)) {

@@ -17,6 +17,7 @@
 #define CMD_UP      (1<<0)
 #define CMD_DN      (1<<1)
 #define CMD_HOLD    (CMD_UP | CMD_DN)
+#define CMD_CLOSE   (1<<2)
 
 // The device uses ATMega8, but schematic was initially being tested on ATMega16 pinboard,
 // so the code is for both MCUs now.
@@ -27,6 +28,7 @@
     #define SW_PIN      PIND
     #define SW_0        PD0
     #define SW_1        PD1
+    #define SW_2        PD2
     #define MT_PORT     PORTB
     #define MT_DDR      DDRB
     #define MT_UL       PB0

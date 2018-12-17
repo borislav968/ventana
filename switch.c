@@ -10,7 +10,7 @@
 #include <avr/eeprom.h>
 #include "defines.h"
 
-#define SW_MASK ((1<<SW_0) | (1<<SW_1))
+#define SW_MASK ((1<<SW_0) | (1<<SW_1) | (1<<SW_2))
 
 unsigned char dir = 0;
 
@@ -25,6 +25,7 @@ unsigned char poll_switch () {
     last = 0;
     if (this & (1<<SW_0)) last |= dir ? CMD_UP : CMD_DN;
     if (this & (1<<SW_1)) last |= dir ? CMD_DN : CMD_UP;
+    if (this & (1<<SW_2)) last = CMD_CLOSE;
     return (last);
 }
 
