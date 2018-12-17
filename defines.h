@@ -13,6 +13,7 @@
 #define ST_HOLD     (1<<2)
 #define ST_EDGE     (1<<3)
 #define ST_SPDUP    (1<<4)
+#define ST_SLEEP    (1<<5)
 
 #define CMD_UP      (1<<0)
 #define CMD_DN      (1<<1)

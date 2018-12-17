@@ -56,7 +56,6 @@ ISR (TIMER0_OVF_vect) {
         // Disable output port
         MT_DDR = 0;
         // Disable timers and interrupts
-        asm("cli");
         TIMSK &= ~((1<<TOIE0) | (1<<TOIE2));
         TCCR0 = 0;
         TCCR1A = 0;
@@ -71,7 +70,8 @@ ISR (TIMER0_OVF_vect) {
 }
 
 // Timer2 overflow
-ISR (TIMER2_OVF_vect) {    
+ISR (TIMER2_OVF_vect) {
+    if (state & ST_SLEEP) return;
     // Check if it's time to stop motor
     if (duration > 0) {
         duration--;
@@ -145,5 +145,4 @@ void motor_start () {
     duration = T_DURATION * 3.8;
     TCCR2 = (1<<CS22) | (1<<CS21) | (1<<CS20); // Set prescaling to 1/1024 ~ 3.8 overflows/sec
     TIMSK |= (1<<TOIE2); // Allow overflow interrupt
-    asm("sei");             // Enable all the interrupts
 }
