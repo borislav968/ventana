@@ -46,6 +46,7 @@
     #define SW_PIN      PINA    
     #define SW_0        PA0
     #define SW_1        PA1
+    #define SW_2        PA2
     #define MT_PORT     PORTD
     #define MT_DDR      DDRD
     #define MT_UL       PD6

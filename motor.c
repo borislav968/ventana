@@ -53,7 +53,10 @@ ISR (TIMER0_OVF_vect) {
         MT_PORT &= ~((1<<MT_UL) | (1<<MT_UR));
         // Enable lower bridge drivers for energy saving
         MT_PORT &= ~((1<<MT_LL) | (1<<MT_LR));
-        // Disable timers
+        // Disable output port
+        MT_DDR = 0;
+        // Disable timers and interrupts
+        asm("cli");
         TIMSK &= ~((1<<TOIE0) | (1<<TOIE2));
         TCCR0 = 0;
         TCCR1A = 0;
@@ -62,8 +65,6 @@ ISR (TIMER0_OVF_vect) {
         // Disable comparator
         ACSR &= ~(1<<ACIE);
         ACSR |= (1<<ACD);
-        // Disable output port
-        MT_DDR = 0;
         // Clear ST_MOVE flag
         state &= ~ST_MOVE;
     }
@@ -143,5 +144,6 @@ void motor_start () {
     // Timer 2 is for motor run time limiting (e.g. if stop by current sensor comparator didn't happen)
     duration = T_DURATION * 3.8;
     TCCR2 = (1<<CS22) | (1<<CS21) | (1<<CS20); // Set prescaling to 1/1024 ~ 3.8 overflows/sec
-    TIMSK |= (1<<TOIE2); // Allow overflow interrupt    
+    TIMSK |= (1<<TOIE2); // Allow overflow interrupt
+    asm("sei");             // Enable all the interrupts
 }
