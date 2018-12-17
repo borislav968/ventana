@@ -14,6 +14,10 @@
 #define ST_EDGE     (1<<3)
 #define ST_SPDUP    (1<<4)
 
+#define CMD_UP      (1<<0)
+#define CMD_DN      (1<<1)
+#define CMD_HOLD    (CMD_UP | CMD_DN)
+
 // The device uses ATMega8, but schematic was initially being tested on ATMega16 pinboard,
 // so the code is for both MCUs now.
 
