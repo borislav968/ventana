@@ -1301,8 +1301,6 @@ Connection ~ 8950 3450
 Wire Wire Line
 	8950 3450 10200 3450
 Wire Wire Line
-	8950 3450 8950 4100
-Wire Wire Line
 	7000 5250 7000 5200
 Connection ~ 7000 5200
 Wire Wire Line
@@ -1338,9 +1336,6 @@ Wire Wire Line
 Wire Wire Line
 	3600 5700 6000 5700
 Connection ~ 6450 5700
-Connection ~ 8950 4100
-Wire Wire Line
-	8950 4100 8950 5250
 $Comp
 L Device:C C11
 U 1 1 5C493C81
@@ -1380,4 +1375,6 @@ Wire Wire Line
 Connection ~ 7300 5650
 Wire Wire Line
 	7300 5650 7000 5650
+Wire Wire Line
+	8950 3450 8950 5250
 $EndSCHEMATC
