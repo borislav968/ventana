@@ -62,7 +62,6 @@ void sleep () {
     asm("sleep");                   // go to idle mode
     TIMSK &= ~(1<<TOIE2);           // disable timer2 after awakening
     TCCR2 = 0;
-    state &= ~ST_SLEEP;
 }
 
 int main () {
