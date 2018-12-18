@@ -40,6 +40,10 @@
     #define CMP_DDR     DDRD
     #define AIN0        PD6
     #define AIN1        PD7
+    #define PORT_ADC    PORTC
+    #define DDR_ADC     DDRC
+    #define ADC_L       PC0
+    #define ADC_R       PC1
 
 #elif defined __AVR_ATmega16__
     #define SW_PORT     PORTA
