@@ -8,6 +8,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include "defines.h"
+#include "driver.h"
 
 // Device state bits are stored here
 volatile unsigned char state = 0;
@@ -22,9 +23,6 @@ volatile unsigned char duration;
 // Freq = F_CPU/PWM_RES+1 (15625Hz)
 // Also affects spinup/spindown time
 #define PWM_RES 0x2F
-
-// Short circuit detection voltage threshold
-#define SH_VOLT 200
 
 // Soft stop - just remove ST_SPDUP bit
 // The rest will be done in Timer 0 interrupt
@@ -53,17 +51,18 @@ ISR (TIMER0_OVF_vect) {
     // Complete stop routine
     if (speed == 0) {
         // Disable upper bridge drivers
-        MT_PORT &= ~((1<<MT_UL) | (1<<MT_UR));
+        //MT_PORT &= ~((1<<MT_UL) | (1<<MT_UR));
         // Enable lower bridge drivers for energy saving
-        MT_PORT &= ~((1<<MT_LL) | (1<<MT_LR));
+        //MT_PORT &= ~((1<<MT_LL) | (1<<MT_LR));
         // Disable output port
-        MT_DDR = 0;
+        //MT_DDR = 0;
         // Disable timers and interrupts
         TIMSK &= ~((1<<TOIE0) | (1<<TOIE2));
         TCCR0 = 0;
         TCCR1A = 0;
         TCCR1B = 0;
         TCCR2 = 0;
+        bridge_ctrl((1<<BR_LL) | (1<<BR_LR));
         // Disable comparator
         ACSR &= ~(1<<ACIE);
         ACSR |= (1<<ACD);
@@ -100,48 +99,7 @@ ISR (ANA_COMP_vect) {
     state &= ~(ST_SPDUP | ST_HOLD);
 }
 
-// Check if upper MOSFETs don't have a short to ground
-unsigned char upper_short () {
-    unsigned char i, dir;
-    unsigned char volt;
-    unsigned char ss = 0;
-    // Set up input pins
-    DDR_ADC &= ~((1<<ADC_L) | (1<<ADC_R));
-    PORT_ADC &= ~((1<<ADC_L) | (1<<ADC_R));
-    ADMUX = 0;
-    // Left adjust the result
-    ADMUX |= (1<<REFS0) | (1<<ADLAR);
-    // Set ADC prescaler (16 = 62.5kHz), enable the ADC
-    ADCSRA |= (1<<ADEN) | (1<<ADPS2);
-    for (dir = 0; dir < 1; dir++) {
-        // Select input pin depending on 'LR' var
-        if (dir) ADMUX |= (1<<MUX0); else ADMUX &= ~(1<<MUX0);
-        // Close the corresponding lower MOSFET
-        if (dir) MT_PORT |= (1<<MT_LR); else MT_PORT |= (1<<MT_LL);
-        // Try to pulse selected upper MOSFET and measure the middle point voltage
-        for (i = 0; i < 5;  i++) {
-            // Open the MOSFET
-            if (dir) MT_PORT |= (1<<MT_UR); else MT_PORT |= (1<<MT_UL);
-            // Start ADC conversion
-            ADCSRA |= (1<<ADSC);
-            while (ADCSRA & (1<<ADSC)) {};
-            volt = ADCH;
-            // Close the MOSFET
-            if (dir) MT_PORT &= ~(1<<MT_UR); else MT_PORT &= ~(1<<MT_UL);
-            if (volt >= SH_VOLT) break;
-        }
-        if (volt < SH_VOLT) ss++;
-    }
-    // Disable the ADC
-    ADCSRA = 0;
-    // Open lower MOSFET
-    if (state & ST_DIR) MT_PORT &= ~(1<<MT_LR);  else MT_PORT &= ~(1<<MT_LL);
-    return ss;
-}
-
 void motor_start () {
-    // Check if there's no shorts in outputs to ground
-    if (upper_short()) return;
     // Set up comparator input pins
     CMP_PORT &= ~((1<<AIN0) | (1<<AIN1));
     CMP_DDR  &= ~((1<<AIN0) | (1<<AIN1));
@@ -156,8 +114,6 @@ void motor_start () {
     ACSR |= (1<<ACIE);
     // output pins for drivers
     MT_DDR |= (1<<MT_UL) | (1<<MT_UR) | (1<<MT_LL) | (1<<MT_LR);
-    // Important: due to different type MOSFETs in upper and lower halves of the bridge,
-    // upper ones are open with logical 1, and lower ones open with logical 0.
     // Enable speed up and move bits in status
     state |= ST_SPDUP | ST_MOVE;
     // Timer 0 is for motor speed increase/decrease
@@ -178,14 +134,16 @@ void motor_start () {
     // Now start the motor in needed direction
     if (state & ST_DIR) 
     {
-        MT_PORT |= (1<<MT_LR);                  // close lower right first
-        MT_PORT |= (1<<MT_UR);                  // open upper right after. Not vice versa - will cause short circuit!
+        //MT_PORT |= (1<<MT_LR);                  // close lower right first
+        //MT_PORT |= (1<<MT_UR);                  // open upper right after. Not vice versa - will cause short circuit!
+        bridge_ctrl((0<<BR_LR) | (1<<BR_UR));
         TCCR1A |= (1<<COM1A0) | (1<<COM1A1);    // connect cnannel A (lower left) to the PWM timer
     }
     else
     {
-        MT_PORT |= (1<<MT_LL);                  // close lower left first
-        MT_PORT |= (1<<MT_UL);                 // open upper left after. Not vice versa - will cause short circuit!
+        //MT_PORT |= (1<<MT_LL);                  // close lower left first
+        //MT_PORT |= (1<<MT_UL);                 // open upper left after. Not vice versa - will cause short circuit!
+        bridge_ctrl((0<<BR_LL) | (1<<BR_UL));
         TCCR1A |= (1<<COM1B0) | (1<<COM1B1);    // connect channel B (lower right) to the PWM timer
     }
     // Timer 2 is for motor run time limiting (e.g. if stop by current sensor comparator didn't happen)

@@ -8,6 +8,11 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
+#define uchar unsigned char
+
+#define ON          0x01
+#define OFF         0x00
+
 #define ST_MOVE     (1<<0)
 #define ST_DIR      (1<<1)
 #define ST_HOLD     (1<<2)
@@ -20,8 +25,11 @@
 #define CMD_HOLD    (CMD_UP | CMD_DN)
 #define CMD_CLOSE   (1<<2)
 
-// The device uses ATMega8, but schematic was initially being tested on ATMega16 pinboard,
-// so the code is for both MCUs now.
+#define BR_LR       0
+#define BR_UR       1
+#define BR_LL       2
+#define BR_UL       3
+#define BR_ERROR    0b11110000
 
 #if defined __AVR_ATmega8__
     #define SW_PORT     PORTD
@@ -32,6 +40,7 @@
     #define SW_2        PD2
     #define MT_PORT     PORTB
     #define MT_DDR      DDRB
+    #define MT_PIN      PINB
     #define MT_UL       PB0
     #define MT_UR       PB3
     #define MT_LL       PB1
@@ -44,24 +53,6 @@
     #define DDR_ADC     DDRC
     #define ADC_L       PC0
     #define ADC_R       PC1
-
-#elif defined __AVR_ATmega16__
-    #define SW_PORT     PORTA
-    #define SW_DDR      DDRA
-    #define SW_PIN      PINA    
-    #define SW_0        PA0
-    #define SW_1        PA1
-    #define SW_2        PA2
-    #define MT_PORT     PORTD
-    #define MT_DDR      DDRD
-    #define MT_UL       PD6
-    #define MT_UR       PD7
-    #define MT_LL       PD4
-    #define MT_LR       PD5
-    #define CMP_PORT    PORTB
-    #define CMP_DDR     DDRB
-    #define AIN0        PB2
-    #define AIN1        PB3
 # else
     #error "This source is for atmega8 and atmega16 MCUs"
 #endif
