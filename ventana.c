@@ -11,6 +11,7 @@
 #include "switch.h"
 #include "defines.h"
 #include "fuses.h"
+#include "driver.h"
 
 // Move the window up
 void moveup () {
@@ -62,6 +63,7 @@ void sleep () {
     asm("sleep");                   // go to idle mode
     TIMSK &= ~(1<<TOIE2);           // disable timer2 after awakening
     TCCR2 = 0;
+    bridge_chk();
 }
 
 int main () {
@@ -70,6 +72,8 @@ int main () {
     // Set up the idle mode
     MCUCR &= ~((1<<SM2) | (1<<SM1) | (1<<SM0));
     MCUCR |= (1<<SE);
+    bridge = (1<<BR_LL) | (1<BR_LR);
+    bridge_update();
     init_switch_port(); // See switch.c for details
     ACSR |= (1<<ACD);   // Disable analog comparator for energy saving when idle
     unsigned char input = 0, prev = 0;

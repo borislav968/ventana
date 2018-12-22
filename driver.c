@@ -9,9 +9,10 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include "defines.h" 
+#include <util/delay.h>
+#include "defines.h"
 
-//volatile uchar br_state = 0;
+volatile uchar bridge;
 
 void led_on () {
     DDRD |= (1<<PD3);
@@ -24,16 +25,16 @@ void led_off () {
 
 uchar get_bridge_state () {
     uchar res;
-    res  = ((MT_PIN>>MT_UL) & 0x01)<<BR_UL;
+    res  =   ((MT_PIN>> MT_UL) & 0x01)<<BR_UL;
     res |= (((~MT_PIN)>>MT_LL) & 0x01)<<BR_LL; 
-    res |= ((MT_PIN>>MT_UR) & 0x01)<<BR_UR;
+    res |=   ((MT_PIN>> MT_UR) & 0x01)<<BR_UR;
     res |= (((~MT_PIN)>>MT_LR) & 0x01)<<BR_LR;
     return res;
 }
 
-void check_conf (uchar *conf) {
-    if (*conf & (1<<BR_UL)) *conf &= ~(1<<BR_LL);
-    if (*conf & (1<<BR_UR)) *conf &= ~(1<<BR_LR);
+void check_bridge () {
+    if (bridge & (1<<BR_UL)) bridge &= ~(1<<BR_LL);
+    if (bridge & (1<<BR_UR)) bridge &= ~(1<<BR_LR);
 }
 
 void adc (uchar on) {
@@ -49,63 +50,65 @@ void adc (uchar on) {
 }
 
 uchar get_voltage (uchar mux) {
-    led_on();
+    //led_on();
     ADMUX &= 0b11110000;
     ADMUX |= (mux & 0b00001111);
-    TCCR2 = (1<<CS22) | (1<<CS21) | (1<<CS20);
-    TIMSK |= (1<<TOIE2);
-    asm("sleep");
-    TIMSK &= ~(1<<TOIE2);
-    TCCR2 = 0;
+    _delay_ms(30);
     ADCSRA |= (1<<ADSC);
     while (ADCSRA & (1<<ADSC)) {};
-    led_off();
+    //led_off();
     return ADCH;
 }
 
-void fet_ctrl (uchar ctrl, uchar i) {
-    uchar fet, inv = 0;
+void fet_ctrl (uchar i) {
+    uchar fet, voltage;
+    uchar error = 0;
+    if (bridge & (1<<(i+4))) return;
     switch (i) {
         case 0: 
             fet = MT_LR;
-            inv++;
             break;
         case 1:
             fet = MT_UR;
             break;
         case 2:
             fet = MT_LL;
-            inv++;
             break;
         case 3:
             fet = MT_UL;
             break;
         default:
-            led_on();
             return;
     }
-    if ((ctrl>>i) & 0x01) {
+    if ((bridge>>i) & 0x01) {
+        led_off();
         adc(ON);
-        MT_PORT = inv ? MT_PORT & ~(1<<fet) : MT_PORT | (1<<fet);
-        
-        adc(OFF);    
-    } else {
-        MT_PORT = inv ? MT_PORT | (1<<fet) : MT_PORT & ~(1<<fet);
+        MT_PORT = (i & 0x01) ? MT_PORT | (1<<fet) : MT_PORT & ~(1<<fet);
+        voltage = get_voltage(~(i>>1) & 0x01);
+        if (i & 0x01) {
+            if (voltage < 130) error++;
+        } else {
+            if (voltage > 30) error++;
+        }
+        adc(OFF);
+        if (error == 0) return;
+        if (!(i & 0x01)) bridge |= (1<<(i+4));
+        led_on();
     }
+    MT_PORT = (i & 0x01) ? MT_PORT & ~(1<<fet) : MT_PORT | (1<<fet);
 }
 
-void bridge_ctrl (uchar conf) {
-    static uchar br_state;
+void bridge_update () {
     uchar change, i;
-    led_off();
-    br_state = conf;
-    check_conf(&conf);
-    if (br_state != conf) led_on();
-    br_state = get_bridge_state ();
-    change = br_state ^ conf;
-    for (i=0; i<4; i++) {
-        if (change & (1<<i)) {
-            fet_ctrl(conf, i);
-        }
-    }
+    //led_off();
+    change = bridge;
+    check_bridge();
+    //if (change != bridge) led_on();
+    change = bridge ^ get_bridge_state();;
+    for (i=0; i<4; i++) if (change & (1<<i)) fet_ctrl(i);
+}
+
+void bridge_chk () {
+    uchar i;
+    for (i=0; i<4; i++) fet_ctrl(i);
 }

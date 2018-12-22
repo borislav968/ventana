@@ -38,16 +38,26 @@ ISR (TIMER0_OVF_vect) {
     if ((state & ST_SPDUP) && (speed < PWM_RES)) {
         // Here can be simply increment of speed, but to get the drive started
         // it's better to reach something like 25% of power asap, and then increment it.
-        if (speed < (PWM_RES>>2)) speed += 4; else speed++;
+        if (speed < (PWM_RES>>2)) speed += 4;
+        else 
+            if (speed < PWM_RES) speed++;
     }
     else
     {
-        // Feels better when the drive stops faster than starts, so speed decreases 4x faster
+        // Feels better when the drive stops faster than starts, so speed decreases 2x faster
         // Lower than ~25% of power there's no need to slowly decrease - the window may be actually stopped already
-        if (speed > (PWM_RES>>2)) speed -= 4; else speed = 0;
+        if (speed > (PWM_RES>>2)) speed -= 2; else speed = 0;
     };
     // Set PWM duty on appropriate channel
-    if (s != speed) *(state & ST_DIR ? &OCR1A : &OCR1B) = speed;
+    if (s != speed) {
+        if (speed == PWM_RES) {
+            bridge = state & ST_DIR ? bridge | (1<<BR_LL) : bridge | (1<<BR_LR);
+            TCCR1A = state & ST_DIR ? TCCR1A & ~((1<<COM1A0) | (1<<COM1A1)) : TCCR1A & ~((1<<COM1B0) | (1<<COM1B1));
+        } else {
+            TCCR1A = state & ST_DIR ? TCCR1A | ((1<<COM1A0) | (1<<COM1A1)) : TCCR1A | ((1<<COM1B0) | (1<<COM1B1));
+            *(state & ST_DIR ? &OCR1A : &OCR1B) = speed;
+        }
+    }
     // Complete stop routine
     if (speed == 0) {
         // Disable upper bridge drivers
@@ -62,7 +72,10 @@ ISR (TIMER0_OVF_vect) {
         TCCR1A = 0;
         TCCR1B = 0;
         TCCR2 = 0;
-        bridge_ctrl((1<<BR_LL) | (1<<BR_LR));
+        bridge = 0;
+        bridge_update();
+        bridge = (1<<BR_LL) | (1<<BR_LR);
+        bridge_update();
         // Disable comparator
         ACSR &= ~(1<<ACIE);
         ACSR |= (1<<ACD);
@@ -132,20 +145,26 @@ void motor_start () {
     // Now raising COM1A1 and COM1B1 in TCCR1A will connect PB1 or PB2 to the timer
     // Duty can be adjusted by changing OCR1A and OCR1B    
     // Now start the motor in needed direction
+    bridge = state & ST_DIR ? (0<<BR_LR) | (1<<BR_UR) : (0<<BR_LL) | (1<<BR_UL);
+    bridge_update();
+    /**
     if (state & ST_DIR) 
     {
         //MT_PORT |= (1<<MT_LR);                  // close lower right first
         //MT_PORT |= (1<<MT_UR);                  // open upper right after. Not vice versa - will cause short circuit!
-        bridge_ctrl((0<<BR_LR) | (1<<BR_UR));
+        bridge = (0<<BR_LR) | (1<<BR_UR);
+        bridge_update();
         TCCR1A |= (1<<COM1A0) | (1<<COM1A1);    // connect cnannel A (lower left) to the PWM timer
     }
     else
     {
         //MT_PORT |= (1<<MT_LL);                  // close lower left first
         //MT_PORT |= (1<<MT_UL);                 // open upper left after. Not vice versa - will cause short circuit!
-        bridge_ctrl((0<<BR_LL) | (1<<BR_UL));
+        bridge = (0<<BR_LL) | (1<<BR_UL);
+        bridge_update();
         TCCR1A |= (1<<COM1B0) | (1<<COM1B1);    // connect channel B (lower right) to the PWM timer
     }
+    **/
     // Timer 2 is for motor run time limiting (e.g. if stop by current sensor comparator didn't happen)
     duration = T_DURATION * 3.8;
     TCCR2 = (1<<CS22) | (1<<CS21) | (1<<CS20); // Set prescaling to 1/1024 ~ 3.8 overflows/sec

@@ -9,6 +9,9 @@
 #ifndef DRIVER_H
 #define DRIVER_H
 
-void bridge_ctrl (uchar conf);
+extern volatile uchar bridge;
+
+void bridge_update ();
+void bridge_chk();
 
 #endif 
