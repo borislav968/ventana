@@ -1,11 +1,8 @@
 DEVICE = atmega8
 DEVICE_PROG = m8
-#DEVICE = atmega16
-#DEVICE_PROG = atmega16
 CLOCK = 1000000
 PORT = /dev/ttyUSB0
-BAUD = 19200
-PROGRAMMER = -c avr910 -P $(PORT) -b $(BAUD)
+PROGRAMMER = -c avrisp2 -P usb
 PROJECT = ventana
 OBJECTS = $(patsubst %.c, $(BUILD)/%.o, $(wildcard *.c))
 HEADERS = $(wildcard *.h)
@@ -15,7 +12,6 @@ COMPILE = avr-gcc -gdwarf-2 -g3 -Wall -Os -DF_CPU=$(CLOCK) -mmcu=$(DEVICE)
 OBJCOPY = avr-objcopy
 
 AVRDUDE = avrdude $(PROGRAMMER) -p $(DEVICE) 
-#FUSES = -U hfuse:w:0x64:m -U lfuse:w:0xdd:m
 FUSES = -U hfuse:w:$(BUILD)/hfuse.hex:i -U lfuse:w:$(BUILD)/lfuse.hex:i -u
 
 .PHONY: all clean
