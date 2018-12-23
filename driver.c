@@ -33,8 +33,6 @@ uchar get_bridge_state () {
 }
 
 void check_bridge () {
-    if (bridge & (1<<BR_UL)) bridge &= ~(1<<BR_LL);
-    if (bridge & (1<<BR_UR)) bridge &= ~(1<<BR_LR);
 }
 
 void adc (uchar on) {
@@ -50,13 +48,11 @@ void adc (uchar on) {
 }
 
 uchar get_voltage (uchar mux) {
-    //led_on();
     ADMUX &= 0b11110000;
     ADMUX |= (mux & 0b00001111);
-    _delay_ms(30);
+    _delay_ms(1);
     ADCSRA |= (1<<ADSC);
     while (ADCSRA & (1<<ADSC)) {};
-    //led_off();
     return ADCH;
 }
 
@@ -88,7 +84,7 @@ void fet_ctrl (uchar i) {
         if (i & 0x01) {
             if (voltage < 130) error++;
         } else {
-            if (voltage > 30) error++;
+            if (voltage > 20) error++;
         }
         adc(OFF);
         if (error == 0) return;
@@ -100,15 +96,17 @@ void fet_ctrl (uchar i) {
 
 void bridge_update () {
     uchar change, i;
-    //led_off();
+    if (bridge & (1<<BR_UL)) bridge &= ~(1<<BR_LL);
+    if (bridge & (1<<BR_UR)) bridge &= ~(1<<BR_LR);
     change = bridge;
     check_bridge();
-    //if (change != bridge) led_on();
     change = bridge ^ get_bridge_state();;
-    for (i=0; i<4; i++) if (change & (1<<i)) fet_ctrl(i);
+    for (i=0; i<4; i++) if (change & (1<<i) && !(bridge & (1<<i))) fet_ctrl(i);
+    for (i=0; i<4; i++) if (change & (1<<i) && bridge & (1<<i)) fet_ctrl(i);
 }
 
 void bridge_chk () {
     uchar i;
-    for (i=0; i<4; i++) fet_ctrl(i);
+    for (i=0; i<4; i++) if (!(bridge & (1<<i)) fet_ctrl(i);
+    for (i=0; i<4; i++) if (bridge & (1<<i) fet_ctrl(i);
 }
