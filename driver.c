@@ -1,8 +1,8 @@
-/*  
+/*
  * driver.c
- * 
+ *
  * Low-level driver for the H-bridge
- * 
+ *
  * Created on: 19 дек. 2018 г.
  *      Author: Borislav Malkov
  */
@@ -16,7 +16,7 @@ volatile uchar bridge;
 
 void led_on () {
     DDRD |= (1<<PD3);
-    PORTD |= (1<<PD3);    
+    PORTD |= (1<<PD3);
 }
 
 void led_off () {
@@ -26,13 +26,10 @@ void led_off () {
 uchar get_bridge_state () {
     uchar res;
     res  =   ((MT_PIN>> MT_UL) & 0x01)<<BR_UL;
-    res |= (((~MT_PIN)>>MT_LL) & 0x01)<<BR_LL; 
+    res |= (((~MT_PIN)>>MT_LL) & 0x01)<<BR_LL;
     res |=   ((MT_PIN>> MT_UR) & 0x01)<<BR_UR;
     res |= (((~MT_PIN)>>MT_LR) & 0x01)<<BR_LR;
     return res;
-}
-
-void check_bridge () {
 }
 
 void adc (uchar on) {
@@ -56,30 +53,29 @@ uchar get_voltage (uchar mux) {
     return ADCH;
 }
 
-void fet_ctrl (uchar i) {
+uchar which_fet (uchar i) {
+    switch (i) {
+        case 0:
+            return MT_LR;
+        case 1:
+            return MT_UR;
+        case 2:
+            return MT_LL;
+        case 3:
+            return MT_UL;
+        default:
+            return 0xFF;
+    }
+}
+
+void fet_chk (uchar i) {
     uchar fet, voltage;
     uchar error = 0;
     if (bridge & (1<<(i+4))) return;
-    switch (i) {
-        case 0: 
-            fet = MT_LR;
-            break;
-        case 1:
-            fet = MT_UR;
-            break;
-        case 2:
-            fet = MT_LL;
-            break;
-        case 3:
-            fet = MT_UL;
-            break;
-        default:
-            return;
-    }
     if ((bridge>>i) & 0x01) {
+        fet = which_fet(i);
         led_off();
         adc(ON);
-        MT_PORT = (i & 0x01) ? MT_PORT | (1<<fet) : MT_PORT & ~(1<<fet);
         voltage = get_voltage(~(i>>1) & 0x01);
         if (i & 0x01) {
             if (voltage < 130) error++;
@@ -89,24 +85,36 @@ void fet_ctrl (uchar i) {
         adc(OFF);
         if (error == 0) return;
         if (!(i & 0x01)) bridge |= (1<<(i+4));
+        MT_PORT = (i & 0x01) ? MT_PORT & ~(1<<fet) : MT_PORT | (1<<fet);
         led_on();
     }
-    MT_PORT = (i & 0x01) ? MT_PORT & ~(1<<fet) : MT_PORT | (1<<fet);
 }
 
-void bridge_update () {
+void fet_ctrl (uchar i) {
+    uchar fet;
+    if (bridge & (1<<(i+4))) return;
+    fet = which_fet(i);
+    if ((bridge>>i) & 0x01) {
+        MT_PORT = (i & 0x01) ? MT_PORT | (1<<fet) : MT_PORT & ~(1<<fet);
+    } else {
+        MT_PORT = (i & 0x01) ? MT_PORT & ~(1<<fet) : MT_PORT | (1<<fet);
+    }
+}
+
+void bridge_update (uchar br) {
     uchar change, i;
+    if (br) bridge = br;
     if (bridge & (1<<BR_UL)) bridge &= ~(1<<BR_LL);
     if (bridge & (1<<BR_UR)) bridge &= ~(1<<BR_LR);
-    change = bridge;
-    check_bridge();
     change = bridge ^ get_bridge_state();;
     for (i=0; i<4; i++) if (change & (1<<i) && !(bridge & (1<<i))) fet_ctrl(i);
-    for (i=0; i<4; i++) if (change & (1<<i) && bridge & (1<<i)) fet_ctrl(i);
+    for (i=0; i<4; i++) if (change & (1<<i) && bridge & (1<<i)) {
+        fet_ctrl(i);
+        fet_chk(i);
+    }
 }
 
 void bridge_chk () {
     uchar i;
-    for (i=0; i<4; i++) if (!(bridge & (1<<i)) fet_ctrl(i);
-    for (i=0; i<4; i++) if (bridge & (1<<i) fet_ctrl(i);
+    for (i=0; i<4; i++) if (bridge & (1<<i)) fet_chk(i);
 }

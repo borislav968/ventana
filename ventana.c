@@ -54,15 +54,21 @@ void hold () {
     if (state & (ST_EDGE | ST_MOVE)) state |= ST_HOLD;
 }
 
+ISR (TIMER1_CAPT_vect) {
+
+}
+
 // Enter sleep mode
 void sleep () {
-    state |= ST_SLEEP;
-    // timer2 will wake the MCU after ~1/15 second
-    TCCR2 = (1<<CS22) | (1<<CS21);  // Set prescaling to 1/256 ~ 15.2 overflows/sec
-    TIMSK |= (1<<TOIE2);            // Allow overflow interrupt
-    asm("sleep");                   // go to idle mode
-    TIMSK &= ~(1<<TOIE2);           // disable timer2 after awakening
-    TCCR2 = 0;
+    // timer1 will wake the MCU after ~1/15 second
+    TCCR1A = 0;
+    TCCR1B = (1<<WGM13) | (1<<WGM12) | (1<<CS11) | (1<<CS10);   // set prescaler 64
+    TCNT1 = 0;
+    ICR1 = 0x208d;          // set 'top' to 8333
+    TIMSK |= (1<<TICIE1);   // allow compare match interrupt
+    asm("sleep");           // go to idle mode
+    TIMSK &= ~(1<<TICIE1);  // disable timer2 after awakening
+    TCCR1B = 0;
     bridge_chk();
 }
 

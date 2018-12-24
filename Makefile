@@ -1,6 +1,6 @@
 DEVICE = atmega8
 DEVICE_PROG = m8
-CLOCK = 1000000
+CLOCK = 8000000
 PORT = /dev/ttyUSB0
 PROGRAMMER = -c avrisp2 -P usb
 PROJECT = ventana

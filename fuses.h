@@ -7,6 +7,6 @@
 
 FUSES = 
 {
-    .low = LFUSE_DEFAULT,
+    .low = FUSE_SUT0 & FUSE_CKSEL3 & FUSE_CKSEL1 & FUSE_CKSEL0,
     .high = HFUSE_DEFAULT,
 };
