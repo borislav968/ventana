@@ -1,6 +1,6 @@
-/*  
+/*
  * motor.c
- * 
+ *
  * Created on: 27 сент. 2018 г.
  *      Author: Borislav Malkov
  */
@@ -37,9 +37,9 @@ ISR (TIMER0_OVF_vect) {
     // Increase or decrease speed depending on ST_SPDUP
     if ((state & ST_SPDUP) && (speed < PWM_RES)) {
         // Here can be simply increment of speed, but to get the drive started
-        // it's better to reach something like 25% of power asap, and then increment it.
-        if (speed < (PWM_RES>>2)) speed += 4;
-        else 
+        // it's better to reach something like 1/8 of power asap, and then increment it.
+        if (speed < (PWM_RES/8)) speed += 4;
+        else
             if (speed < PWM_RES) speed++;
     }
     else
@@ -59,10 +59,7 @@ ISR (TIMER0_OVF_vect) {
         TCCR1B = 0;
         TCCR2 = 0;
         // Disable bridge drivers
-        bridge = 0;
-        bridge_update();
-        bridge = (1<<BR_LL) | (1<<BR_LR);
-        bridge_update();
+        bridge_update((1<<BR_LL) | (1<<BR_LR));
         // Disable comparator
         ACSR &= ~(1<<ACIE);
         ACSR |= (1<<ACD);
@@ -126,10 +123,9 @@ void motor_start () {
     // F_PWM will be F_CPU/(N*(PWM_RES+1)) = 1000000/64 = 15625 Hz
     TCCR1B |= (1<<CS11);
     // Now raising COM1A1 and COM1B1 in TCCR1A will connect PB1 or PB2 to the timer
-    // Duty can be adjusted by changing OCR1A and OCR1B    
+    // Duty can be adjusted by changing OCR1A and OCR1B
     // Now start the motor in needed direction
-    bridge = state & ST_DIR ? (0<<BR_LR) | (1<<BR_UR) : (0<<BR_LL) | (1<<BR_UL);
-    bridge_update();
+    bridge_update((state & ST_DIR) ? (0<<BR_LR) | (1<<BR_UR) : (0<<BR_LL) | (1<<BR_UL));
     TCCR1A = state & ST_DIR ? TCCR1A | ((1<<COM1A0) | (1<<COM1A1)) : TCCR1A | ((1<<COM1B0) | (1<<COM1B1));
     // Timer 2 is for motor run time limiting (e.g. if stop by current sensor comparator didn't happen)
     duration = T_DURATION * 30.5;
