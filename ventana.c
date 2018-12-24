@@ -69,7 +69,7 @@ void sleep () {
     asm("sleep");           // go to idle mode
     TIMSK &= ~(1<<TICIE1);  // disable timer2 after awakening
     TCCR1B = 0;
-    bridge_chk();
+    bridge_chk();           // check if there are no shorts of bridge middle points to +12V
 }
 
 int main () {
