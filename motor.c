@@ -17,12 +17,12 @@ volatile unsigned char state = 0;
 volatile unsigned char speed = 0;
 
 // Time counter for motor run time limiting
-volatile unsigned char duration;
+volatile unsigned int duration;
 
 // PWM resolution - the bigger it is, the lower will be PWM frequency.
-// Freq = F_CPU/PWM_RES+1 (15625Hz)
+// Freq = F_CPU/N*(PWM_RES+1) = 8000000 / 8 * (63 + 1) = 15625Hz
 // Also affects spinup/spindown time
-#define PWM_RES 0x2F
+#define PWM_RES 0x3F
 
 // Soft stop - just remove ST_SPDUP bit
 // The rest will be done in Timer 0 interrupt
@@ -33,7 +33,7 @@ void motor_stop () {
 // Timer 0 interrupt
 // PWM control routine
 ISR (TIMER0_OVF_vect) {
-    unsigned char s = speed;
+    unsigned char s = speed;    // remember current speed
     // Increase or decrease speed depending on ST_SPDUP
     if ((state & ST_SPDUP) && (speed < PWM_RES)) {
         // Here can be simply increment of speed, but to get the drive started
@@ -48,30 +48,17 @@ ISR (TIMER0_OVF_vect) {
         // Lower than ~25% of power there's no need to slowly decrease - the window may be actually stopped already
         if (speed > (PWM_RES>>2)) speed -= 2; else speed = 0;
     };
-    // Set PWM duty on appropriate channel
-    if (s != speed) {
-        if (speed == PWM_RES) {
-            bridge = state & ST_DIR ? bridge | (1<<BR_LL) : bridge | (1<<BR_LR);
-            TCCR1A = state & ST_DIR ? TCCR1A & ~((1<<COM1A0) | (1<<COM1A1)) : TCCR1A & ~((1<<COM1B0) | (1<<COM1B1));
-        } else {
-            TCCR1A = state & ST_DIR ? TCCR1A | ((1<<COM1A0) | (1<<COM1A1)) : TCCR1A | ((1<<COM1B0) | (1<<COM1B1));
-            *(state & ST_DIR ? &OCR1A : &OCR1B) = speed;
-        }
-    }
+    // Set PWM duty on appropriate channel if speed has changed
+    if (s != speed) *(state & ST_DIR ? &OCR1A : &OCR1B) = speed;
     // Complete stop routine
     if (speed == 0) {
-        // Disable upper bridge drivers
-        //MT_PORT &= ~((1<<MT_UL) | (1<<MT_UR));
-        // Enable lower bridge drivers for energy saving
-        //MT_PORT &= ~((1<<MT_LL) | (1<<MT_LR));
-        // Disable output port
-        //MT_DDR = 0;
         // Disable timers and interrupts
         TIMSK &= ~((1<<TOIE0) | (1<<TOIE2));
         TCCR0 = 0;
         TCCR1A = 0;
         TCCR1B = 0;
         TCCR2 = 0;
+        // Disable bridge drivers
         bridge = 0;
         bridge_update();
         bridge = (1<<BR_LL) | (1<<BR_LR);
@@ -86,10 +73,6 @@ ISR (TIMER0_OVF_vect) {
 
 // Timer2 overflow
 ISR (TIMER2_OVF_vect) {
-    if (state & ST_SLEEP) {
-        state &= ~ST_SLEEP;
-        return;
-    }
     // Check if it's time to stop motor
     if (duration > 0) {
         duration--;
@@ -130,8 +113,8 @@ void motor_start () {
     // Enable speed up and move bits in status
     state |= ST_SPDUP | ST_MOVE;
     // Timer 0 is for motor speed increase/decrease
-    // Spinup time = PWM_RES * ((N*256)/F_CPU), timer0 prescaler N is now 64
-    TCCR0 |= (1<<CS01) | (1<<CS00);
+    // Spinup time = PWM_RES * ((N*256)/F_CPU), timer0 prescaler N is now 256
+    TCCR0 |= (1<<CS02);
     // Enable timer 0 overflow interrupt
     TIMSK |= (1<<TOIE0);
     // Timer 1 is used for PWM control of the motor
@@ -141,32 +124,15 @@ void motor_start () {
     ICR1 = PWM_RES;
     // timer1 prescaler 1
     // F_PWM will be F_CPU/(N*(PWM_RES+1)) = 1000000/64 = 15625 Hz
-    TCCR1B |= (1<<CS10);
+    TCCR1B |= (1<<CS11);
     // Now raising COM1A1 and COM1B1 in TCCR1A will connect PB1 or PB2 to the timer
     // Duty can be adjusted by changing OCR1A and OCR1B    
     // Now start the motor in needed direction
     bridge = state & ST_DIR ? (0<<BR_LR) | (1<<BR_UR) : (0<<BR_LL) | (1<<BR_UL);
     bridge_update();
-    /**
-    if (state & ST_DIR) 
-    {
-        //MT_PORT |= (1<<MT_LR);                  // close lower right first
-        //MT_PORT |= (1<<MT_UR);                  // open upper right after. Not vice versa - will cause short circuit!
-        bridge = (0<<BR_LR) | (1<<BR_UR);
-        bridge_update();
-        TCCR1A |= (1<<COM1A0) | (1<<COM1A1);    // connect cnannel A (lower left) to the PWM timer
-    }
-    else
-    {
-        //MT_PORT |= (1<<MT_LL);                  // close lower left first
-        //MT_PORT |= (1<<MT_UL);                 // open upper left after. Not vice versa - will cause short circuit!
-        bridge = (0<<BR_LL) | (1<<BR_UL);
-        bridge_update();
-        TCCR1A |= (1<<COM1B0) | (1<<COM1B1);    // connect channel B (lower right) to the PWM timer
-    }
-    **/
+    TCCR1A = state & ST_DIR ? TCCR1A | ((1<<COM1A0) | (1<<COM1A1)) : TCCR1A | ((1<<COM1B0) | (1<<COM1B1));
     // Timer 2 is for motor run time limiting (e.g. if stop by current sensor comparator didn't happen)
-    duration = T_DURATION * 3.8;
-    TCCR2 = (1<<CS22) | (1<<CS21) | (1<<CS20); // Set prescaling to 1/1024 ~ 3.8 overflows/sec
-    TIMSK |= (1<<TOIE2); // Allow overflow interrupt
+    duration = T_DURATION * 30.5;
+    TCCR2 = (1<<CS22) | (1<<CS21) | (1<<CS20);  // Set prescaling to 1/1024 ~ 30.5 overflows/sec
+    TIMSK |= (1<<TOIE2);                        // Allow overflow interrupt
 }
