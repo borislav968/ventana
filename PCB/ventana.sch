@@ -446,7 +446,7 @@ U 1 1 5C0C222A
 P 2700 3250
 F 0 "U1" H 3050 4650 50  0000 C CNN
 F 1 "ATmega8-16AU" H 2300 4650 50  0000 C CNN
-F 2 "Package_QFP:TQFP-32_7x7mm_P0.8mm" H 2700 3250 50  0001 C CIN
+F 2 "Ventana:AtMega8_TQFP32" H 2700 3250 50  0001 C CIN
 F 3 "http://ww1.microchip.com/downloads/en/DeviceDoc/atmel-2486-8-bit-avr-microcontroller-atmega8_l_datasheet.pdf" H 2700 3250 50  0001 C CNN
 	1    2700 3250
 	1    0    0    -1  
@@ -637,7 +637,7 @@ Wire Wire Line
 Wire Wire Line
 	3400 3650 3400 5600
 Wire Wire Line
-	3400 5600 2100 5600
+	3400 5600 3100 5600
 Wire Wire Line
 	2100 6000 2800 6000
 Wire Wire Line
@@ -1002,7 +1002,7 @@ U 1 1 5C3A2EBB
 P 1650 3550
 F 0 "J1" H 1700 3967 50  0000 C CNN
 F 1 "Prog" H 1700 3876 50  0000 C CNN
-F 2 "Connector_PinHeader_2.54mm:PinHeader_2x05_P2.54mm_Vertical" H 1650 3550 50  0001 C CNN
+F 2 "Ventana:conn_2_5" H 1650 3550 50  0001 C CNN
 F 3 "~" H 1650 3550 50  0001 C CNN
 	1    1650 3550
 	1    0    0    -1  
@@ -1437,4 +1437,17 @@ F 3 "~" H 2950 6000 50  0001 C CNN
 $EndComp
 Wire Wire Line
 	3100 6000 3450 6000
+$Comp
+L Device:R R27
+U 1 1 5C44EFD2
+P 2950 5600
+F 0 "R27" V 2743 5600 50  0000 C CNN
+F 1 "R" V 2834 5600 50  0000 C CNN
+F 2 "Resistor_SMD:R_1206_3216Metric" V 2880 5600 50  0001 C CNN
+F 3 "~" H 2950 5600 50  0001 C CNN
+	1    2950 5600
+	0    1    1    0   
+$EndComp
+Wire Wire Line
+	2800 5600 2100 5600
 $EndSCHEMATC
