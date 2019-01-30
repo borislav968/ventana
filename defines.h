@@ -41,7 +41,7 @@
     #define MT_DDR      DDRB
     #define MT_PIN      PINB
     #define MT_UL       PB0
-    #define MT_UR       PB3
+    #define MT_UR       PB6
     #define MT_LL       PB1
     #define MT_LR       PB2
     #define CMP_PORT    PORTD
