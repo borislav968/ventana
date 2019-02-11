@@ -59,4 +59,9 @@
 // motor run max duration, ~seconds
 #define T_DURATION 6
 
+// PWM resolution - the bigger it is, the lower will be PWM frequency.
+// Freq = F_CPU/N*(PWM_RES+1) = 8000000 / 8 * (63 + 1) = 15625Hz
+// Also affects spinup/spindown time
+#define PWM_RES 0x3F
+
 #endif

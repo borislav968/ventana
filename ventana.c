@@ -64,7 +64,7 @@ void sleep () {
     TCCR1A = 0;
     TCCR1B = (1<<WGM13) | (1<<WGM12) | (1<<CS11) | (1<<CS10);   // set prescaler 64
     TCNT1 = 0;
-    ICR1 = 0x208d;          // set 'top' to 8333
+    ICR1 = 0x1046;          // set 'top' to 4166
     TIMSK |= (1<<TICIE1);   // allow compare match interrupt
     asm("sleep");           // go to idle mode
     TIMSK &= ~(1<<TICIE1);  // disable timer2 after awakening

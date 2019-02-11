@@ -9,6 +9,10 @@
 #include <avr/interrupt.h>
 #include "defines.h"
 #include "driver.h"
+#include <stdlib.h>
+
+#define BAUD 19200L
+#define UBRR_val ((F_CPU/(BAUD*16))-1)
 
 // Device state bits are stored here
 volatile unsigned char state = 0;
@@ -18,11 +22,6 @@ volatile unsigned char speed = 0;
 
 // Time counter for motor run time limiting
 volatile unsigned int duration;
-
-// PWM resolution - the bigger it is, the lower will be PWM frequency.
-// Freq = F_CPU/N*(PWM_RES+1) = 8000000 / 8 * (63 + 1) = 15625Hz
-// Also affects spinup/spindown time
-#define PWM_RES 0x3F
 
 // Soft stop - just remove ST_SPDUP bit
 // The rest will be done in Timer 0 interrupt
@@ -35,18 +34,21 @@ void motor_stop () {
 ISR (TIMER0_OVF_vect) {
     unsigned char s = speed;    // remember current speed
     // Increase or decrease speed depending on ST_SPDUP
-    if ((state & ST_SPDUP) && (speed < PWM_RES)) {
+    if (state & ST_SPDUP) {
+        if (speed < PWM_RES) speed++;
         // Here can be simply increment of speed, but to get the drive started
         // it's better to reach something like 1/8 of power asap, and then increment it.
-        if (speed < (PWM_RES/8)) speed += 4;
-        else
-            if (speed < PWM_RES) speed++;
+        //if (speed < (PWM_RES/4)) speed += 8;
+        //else
+        //    if (speed < PWM_RES) speed++;
     }
     else
     {
+        if (speed > 0) speed--;
         // Feels better when the drive stops faster than starts, so speed decreases 2x faster
         // Lower than ~25% of power there's no need to slowly decrease - the window may be actually stopped already
-        if (speed > (PWM_RES>>2)) speed -= 2; else speed = 0;
+        //if (speed < (PWM_RES/4)) speed = 0; else speed--;
+
     };
     // Set PWM duty on appropriate channel if speed has changed
     if (s != speed) *(state & ST_DIR ? &OCR1A : &OCR1B) = speed;
@@ -111,7 +113,7 @@ void motor_start () {
     state |= ST_SPDUP | ST_MOVE;
     // Timer 0 is for motor speed increase/decrease
     // Spinup time = PWM_RES * ((N*256)/F_CPU), timer0 prescaler N is now 256
-    TCCR0 |= (1<<CS02);
+    TCCR0 |= (1<<CS02);// | (1<<CS00);
     // Enable timer 0 overflow interrupt
     TIMSK |= (1<<TOIE0);
     // Timer 1 is used for PWM control of the motor
