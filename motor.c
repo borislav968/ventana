@@ -11,9 +11,6 @@
 #include "driver.h"
 #include <stdlib.h>
 
-#define BAUD 19200L
-#define UBRR_val ((F_CPU/(BAUD*16))-1)
-
 // Device state bits are stored here
 volatile unsigned char state = 0;
 
@@ -36,19 +33,10 @@ ISR (TIMER0_OVF_vect) {
     // Increase or decrease speed depending on ST_SPDUP
     if (state & ST_SPDUP) {
         if (speed < PWM_RES) speed++;
-        // Here can be simply increment of speed, but to get the drive started
-        // it's better to reach something like 1/8 of power asap, and then increment it.
-        //if (speed < (PWM_RES/4)) speed += 8;
-        //else
-        //    if (speed < PWM_RES) speed++;
     }
     else
     {
         if (speed > 0) speed--;
-        // Feels better when the drive stops faster than starts, so speed decreases 2x faster
-        // Lower than ~25% of power there's no need to slowly decrease - the window may be actually stopped already
-        //if (speed < (PWM_RES/4)) speed = 0; else speed--;
-
     };
     // Set PWM duty on appropriate channel if speed has changed
     if (s != speed) *(state & ST_DIR ? &OCR1A : &OCR1B) = speed;

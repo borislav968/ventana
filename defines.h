@@ -64,4 +64,11 @@
 // Also affects spinup/spindown time
 #define PWM_RES 0x3F
 
+// Max output voltage measured by ADC
+#define MAX_VOLTAGE 170
+
+// For short circuit protection functions
+#define LO_THRESHOLD 20
+#define HI_THRESHOLD 50
+
 #endif

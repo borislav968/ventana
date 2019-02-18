@@ -89,9 +89,9 @@ void fet_chk (uchar i) {
         adc(ON);                                // turn on the ADC
         voltage = get_voltage(~(i>>1) & 0x01);  // measure voltage on the left or right side
         if (i & 0x01) {                         // if it is an upper MOSFET
-            if (voltage < 130) error++;         // it should make the voltage rise, so if it's too low, there's an error
+            if (voltage < (MAX_VOLTAGE - HI_THRESHOLD)) error++; // it should make the voltage rise, so if it's too low, there's an error
         } else {
-            if (voltage > 20) error++;          // lower MOSFET should hold the voltage low
+            if (voltage > LO_THRESHOLD) error++;                // lower MOSFET should hold the voltage low
         }
         adc(OFF);                               // turn off the ADC
         if (error == 0) return;                 // if no errors, nothing more to do
