@@ -11,6 +11,8 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 #include "defines.h"
+#include "util.h"
+#include <stdlib.h>
 
 // Stores the H-bridge state
 // 3:0 are for the state (on/off) of UL, LL, UR, LR
@@ -19,12 +21,12 @@ volatile uchar bridge;
 
 // Debugging stuff
 void led_on () {
-    DDRD |= (1<<PD3);
-    PORTD |= (1<<PD3);
+    DDRD |= (1<<PD4);
+    PORTD |= (1<<PD4);
 }
 
 void led_off () {
-    PORTD &= ~(1<<PD3);
+    PORTD &= ~(1<<PD4);
 }
 
 // Returns the actual state of bridge controlling pins
@@ -42,11 +44,11 @@ void adc (uchar on) {
     if (on) {
         DDR_ADC &= ~((1<<ADC_L) | (1<<ADC_R));
         PORT_ADC &= ~((1<<ADC_L) | (1<<ADC_R));
-        ADMUX = (1<<REFS0) | (1<<ADLAR);
         ADCSRA = (1<<ADEN) | (1<<ADPS2);
+        ADMUX = (1<<REFS0) | (1<<ADLAR);
     } else {
-        ADCSRA = 0;
-        ADMUX = 0;
+        //ADMUX = 0;
+        ADCSRA &= ~(1<<ADEN);
     }
 }
 
@@ -59,6 +61,16 @@ uchar get_voltage (uchar mux) {
     ADCSRA |= (1<<ADSC);            // start the conversion
     while (ADCSRA & (1<<ADSC)) {};  // ...and wait for it to end
     return ADCH;
+}
+
+uchar out_voltage () {
+    uchar a, b;
+    adc(ON);
+    a = get_voltage(0x00);
+    b = get_voltage(0x01);
+    adc(OFF);
+    if (a == b) return 0;
+    return a > b ? a - b : b - a;
 }
 
 // Since the actual FET outputs not necessarily are matching to 'bridge' bits
@@ -81,23 +93,37 @@ uchar which_fet (uchar i) {
 // Checks if the open MOSFET doesn't cause a short circuit due, for example, bad insulation
 void fet_chk (uchar i) {
     uchar fet, voltage;
+    uchar k, v[3];
     uchar error = 0;
+    uchar e = 0;
+    char b[10];
     if (bridge & (1<<(i+4))) return;            // do nothing if there already is an error on this MOSFET
     if ((bridge>>i) & 0x01) {                   // there's no need to do this check for a closed MOSFET
         fet = which_fet(i);
         led_off();
         adc(ON);                                // turn on the ADC
-        voltage = get_voltage(~(i>>1) & 0x01);  // measure voltage on the left or right side
+        //voltage = get_voltage(~(i>>1) & 0x01);  // measure voltage on the left or right side
+        for (k = 0; k < 3; k++) {
+            v[k] = get_voltage(~(i>>1) & 0x01);
+        }
+        voltage = median(v);
         if (i & 0x01) {                         // if it is an upper MOSFET
-            if (voltage < (MAX_VOLTAGE - HI_THRESHOLD)) error++; // it should make the voltage rise, so if it's too low, there's an error
+            if (voltage < (MAX_VOLTAGE - HI_THRESHOLD)) { error++; e = 1; } // it should make the voltage rise, so if it's too low, there's an error
         } else {
-            if (voltage > LO_THRESHOLD) error++;                // lower MOSFET should hold the voltage low
+            if (voltage > LO_THRESHOLD) { error++; e = 2; }               // lower MOSFET should hold the voltage low
         }
         adc(OFF);                               // turn off the ADC
         if (error == 0) return;                 // if no errors, nothing more to do
         if (!(i & 0x01)) bridge |= (1<<(i+4));  // remember the error in the corresponding bit of 'bridge' var
         MT_PORT = (i & 0x01) ? MT_PORT & ~(1<<fet) : MT_PORT | (1<<fet);    // of course the MOSFET should be closed now
         led_on();
+        //sendstr("MOSFET protection");
+        if (e == 1) sendstr("Upper MOSFET");
+        if (e == 2) sendstr("Lower MOSFET");
+        for (k = 0; k < 3; k++) {
+            itoa(v[k], b, 10);
+            sendstr(b);
+        }
     }
 }
 
@@ -122,8 +148,10 @@ void bridge_update (uchar br) {
     if (bridge & (1<<BR_UR)) bridge &= ~(1<<BR_LR);     // we don't want to open lower and upper MOSFETs on the same side
     change = bridge ^ get_bridge_state();               // make the mask of changing bits
     for (i=0; i<4; i++) if (change & (1<<i) && !(bridge & (1<<i))) fet_ctrl(i); // first we do all closing MOSFETs
+    //_delay_ms(50);
     for (i=0; i<4; i++) if (change & (1<<i) && bridge & (1<<i)) {               // and after that, all the opening ones
         fet_ctrl(i);
+        _delay_ms(20);
         fet_chk(i);
     }
 }

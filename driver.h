@@ -13,5 +13,6 @@ extern volatile uchar bridge;
 
 void bridge_update ();
 void bridge_chk();
+uchar out_voltage();
 
 #endif

@@ -8,7 +8,8 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
-#define uchar unsigned char
+#define uchar   unsigned char
+#define uint    unsigned int
 
 #define ON          0x01
 #define OFF         0x00
@@ -18,6 +19,9 @@
 #define ST_HOLD     (1<<2)
 #define ST_EDGE     (1<<3)
 #define ST_SPDUP    (1<<4)
+#define ST_TMOUT    (1<<5)
+#define ST_LEARN    (1<<6)
+#define ST_BACK     (1<<7)
 
 #define CMD_UP      (1<<0)
 #define CMD_DN      (1<<1)
@@ -35,8 +39,8 @@
     #define SW_DDR      DDRD
     #define SW_PIN      PIND
     #define SW_0        PD0
-    #define SW_1        PD1
-    #define SW_2        PD2
+    #define SW_1        PD2
+    #define SW_2        PD3
     #define MT_PORT     PORTB
     #define MT_DDR      DDRB
     #define MT_PIN      PINB
@@ -57,7 +61,8 @@
 #endif
 
 // motor run max duration, ~seconds
-#define T_DURATION 6
+#define T_DURATION 15
+#define T_MIN_DURATION 1
 
 // PWM resolution - the bigger it is, the lower will be PWM frequency.
 // Freq = F_CPU/N*(PWM_RES+1) = 8000000 / 8 * (63 + 1) = 15625Hz
@@ -70,5 +75,15 @@
 // For short circuit protection functions
 #define LO_THRESHOLD 20
 #define HI_THRESHOLD 50
+
+#define REC_LG 50
+
+typedef uchar record[REC_LG];
+
+typedef struct {
+    uchar start;
+    uchar end;
+} interval;
+
 
 #endif

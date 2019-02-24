@@ -16,13 +16,14 @@
 // Move the window up
 void moveup () {
     if (state & ST_DIR) {           // if direction is the same in state
-        if (state & ST_EDGE) return; // do nothing if it already has reached the edge
+        if ((state & ST_EDGE) || (state & ST_HOLD)) return; // do nothing if it already has reached the edge
         if (state & ST_MOVE) {      // restart motor if it was in spindown state
-            motor_start();
+            state |= ST_SPDUP;
             return;
         }
     }
     if (state & ST_MOVE) {          // if direction was other in state
+        state &= ~ST_HOLD;
         motor_stop();               // spin the motor down
         while (speed) {};           // wait for it to stop
     }
@@ -34,13 +35,14 @@ void moveup () {
 // Move the window down
 void movedn () {
     if (!(state & ST_DIR)) {           // if direction is the same in state
-        if (state & ST_EDGE) return; // do nothing if it already has reached the edge
+        if ((state & ST_EDGE) || (state & ST_HOLD)) return; // do nothing if it already has reached the edge
         if (state & ST_MOVE) {      // restart motor if it was in spindown state
-            motor_start();
+            state |= ST_SPDUP;
             return;
         }
     }
     if (state & ST_MOVE) {          // if direction was other in state
+        state &= ~ST_HOLD;
         motor_stop();               // spin the motor down
         while (speed) {};           // wait for it to stop
     }
@@ -52,6 +54,17 @@ void movedn () {
 // Enter 'hold' mode - now motor will continue working even if no input from switch
 void hold () {
     if (state & (ST_EDGE | ST_MOVE)) state |= ST_HOLD;
+}
+
+void rollback () {
+    uchar t;
+    t = max_duration;
+    max_duration = t/4;
+    state = 0;
+    movedn();
+    while (state & ST_MOVE);
+    max_duration = t;
+    state = 0;
 }
 
 ISR (TIMER1_CAPT_vect) {
@@ -75,18 +88,29 @@ void sleep () {
 int main () {
     // Allow global interrupts
     asm("sei");
+
+    #define BAUD 19200
+    #define UBRR_SET ((F_CPU/16/BAUD)-1)
+
+    UBRRH = (uchar) (UBRR_SET>>8);
+    UBRRL = (uchar) UBRR_SET;
+    UCSRB = (1<<TXEN);
+    UCSRC = (1<<URSEL) | (1<<UCSZ1) | (1<<UCSZ0);
+
     // Set up the idle mode
     MCUCR &= ~((1<<SM2) | (1<<SM1) | (1<<SM0));
     MCUCR |= (1<<SE);
     bridge = (1<<BR_LL) | (1<BR_LR);
     bridge_update();
     init_switch_port(); // See switch.c for details
+    init_motor();
     ACSR |= (1<<ACD);   // Disable analog comparator for energy saving when idle
+
     unsigned char input = 0, prev = 0;
     while (1) {
+        if (state & ST_BACK) rollback();
         input = poll_switch();  // Poll current command from switch
         if (input != prev) {    // Do nothing if it didn't change
-            prev = input;
             switch (input) {
                 case CMD_UP:    // Move up
                     moveup();
@@ -104,13 +128,13 @@ int main () {
                 case 0:         // No commands - if not in 'hold' state, stop the motor
                     if (!(state & ST_HOLD)) {
                         motor_stop();
-                        while (speed) {};
                     }
                     break;
                 default:        // For some weird situations =)
                     state = 0;
                     motor_stop();
             }
+            prev = input;
         } else if (!(input || speed)) sleep(); // go to idle mode if nothing is happening
     }
 }
