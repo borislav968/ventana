@@ -19,16 +19,6 @@
 // 7:4 are for errors of UL, LL, UR, LR
 volatile uchar bridge;
 
-// Debugging stuff
-void led_on () {
-    DDRD |= (1<<PD4);
-    PORTD |= (1<<PD4);
-}
-
-void led_off () {
-    PORTD &= ~(1<<PD4);
-}
-
 // Returns the actual state of bridge controlling pins
 uchar get_bridge_state () {
     uchar res;
@@ -47,7 +37,7 @@ void adc (uchar on) {
         ADCSRA = (1<<ADEN) | (1<<ADPS2);
         ADMUX = (1<<REFS0) | (1<<ADLAR);
     } else {
-        //ADMUX = 0;
+        ADMUX = 0;
         ADCSRA &= ~(1<<ADEN);
     }
 }
@@ -95,35 +85,24 @@ void fet_chk (uchar i) {
     uchar fet, voltage;
     uchar k, v[3];
     uchar error = 0;
-    uchar e = 0;
-    char b[10];
     if (bridge & (1<<(i+4))) return;            // do nothing if there already is an error on this MOSFET
     if ((bridge>>i) & 0x01) {                   // there's no need to do this check for a closed MOSFET
         fet = which_fet(i);
-        led_off();
         adc(ON);                                // turn on the ADC
         //voltage = get_voltage(~(i>>1) & 0x01);  // measure voltage on the left or right side
         for (k = 0; k < 3; k++) {
             v[k] = get_voltage(~(i>>1) & 0x01);
         }
         voltage = median(v);
-        if (i & 0x01) {                         // if it is an upper MOSFET
-            if (voltage < (MAX_VOLTAGE - HI_THRESHOLD)) { error++; e = 1; } // it should make the voltage rise, so if it's too low, there's an error
+        if (i & 0x01) {                                             // if it is an upper MOSFET
+            if (voltage < (MAX_VOLTAGE - HI_THRESHOLD)) error++;    // it should make the voltage rise, so if it's too low, there's an error
         } else {
-            if (voltage > LO_THRESHOLD) { error++; e = 2; }               // lower MOSFET should hold the voltage low
+            if (voltage > LO_THRESHOLD) error++;                    // lower MOSFET should hold the voltage low
         }
         adc(OFF);                               // turn off the ADC
         if (error == 0) return;                 // if no errors, nothing more to do
         if (!(i & 0x01)) bridge |= (1<<(i+4));  // remember the error in the corresponding bit of 'bridge' var
         MT_PORT = (i & 0x01) ? MT_PORT & ~(1<<fet) : MT_PORT | (1<<fet);    // of course the MOSFET should be closed now
-        led_on();
-        //sendstr("MOSFET protection");
-        if (e == 1) sendstr("Upper MOSFET");
-        if (e == 2) sendstr("Lower MOSFET");
-        for (k = 0; k < 3; k++) {
-            itoa(v[k], b, 10);
-            sendstr(b);
-        }
     }
 }
 
@@ -148,7 +127,6 @@ void bridge_update (uchar br) {
     if (bridge & (1<<BR_UR)) bridge &= ~(1<<BR_LR);     // we don't want to open lower and upper MOSFETs on the same side
     change = bridge ^ get_bridge_state();               // make the mask of changing bits
     for (i=0; i<4; i++) if (change & (1<<i) && !(bridge & (1<<i))) fet_ctrl(i); // first we do all closing MOSFETs
-    //_delay_ms(50);
     for (i=0; i<4; i++) if (change & (1<<i) && bridge & (1<<i)) {               // and after that, all the opening ones
         fet_ctrl(i);
         _delay_ms(20);

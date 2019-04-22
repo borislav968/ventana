@@ -39,8 +39,8 @@
     #define SW_DDR      DDRD
     #define SW_PIN      PIND
     #define SW_0        PD0
-    #define SW_1        PD2
-    #define SW_2        PD3
+    #define SW_1        PD1
+    #define SW_2        PD2
     #define MT_PORT     PORTB
     #define MT_DDR      DDRB
     #define MT_PIN      PINB

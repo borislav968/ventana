@@ -10,8 +10,8 @@
 #include <avr/eeprom.h>
 #include "defines.h"
 #include "driver.h"
-#include <stdlib.h>
-#include <stdio.h>
+//#include <stdlib.h>
+//#include <stdio.h>
 #include <util/delay.h>
 #include "util.h"
 
@@ -36,88 +36,21 @@ uchar logsize = 0;
 interval time_int = {0, REC_LG-1};
 uint hardness = 0;
 
-
-
 void savelog (uchar v) {
-    //itoa(v, buffer, 10);
-    //sendstr(buffer);
     journal[logptr] = v;
     logptr = (logptr + 1 + REC_LG) % REC_LG;
     if (logsize < REC_LG) logsize++;
 }
 
-void showlog (uchar j[], uchar start, uchar end) {
-    uchar i;
-    char b[20];
-    for (i = start; i <= end; i++) {
-        itoa(j[i], b, 10);
-        sendstr(b);
-    }
-}
-
 void analyze (uchar j[]) {
-    //interval intrv;
     uint h;
     if (logsize < (REC_LG - time_int.start) || ((max_duration - duration) < 20)) return;
-
-    //rec_wrap(journal, logptr);
-    //rec_filter(journal, 1);
-    //rec_filter(journal, 0);
-    //rec_relative(journal);
-
-    //sendstr("");
-    //sendstr("0: Volt log raw dta:");
-    //showlog(journal, 0, REC_LG-1);
-
-    //sendstr("");
-    //sendstr("1: Wrap to ptr:");
     rec_wrap(journal, logptr);
-    //showlog(j, 0, REC_LG-1);
-
-    //sendstr("");
-    //sendstr("2: Median fltr :");
     rec_filter(journal, 1);
-    //showlog(j, 0, REC_LG-1);
-
-    //sendstr("");
-    //sendstr("3: Avg fltr :");
     rec_filter(journal, 0);
-    //showlog(j, 0, REC_LG-1);
-
-    //sendstr("");
-    //sprintf(buffer, "4: Volt mrgns: min=%u, max=%u", rec_volt_margins(j, time_int).start, rec_volt_margins(j, time_int).end);
-    //sendstr(buffer);
-
-    //sendstr("");
-    //sendstr("3: Rltive data:");
     rec_relative(journal, time_int);
-    //showlog(j, 0, REC_LG-1);
-
-    //sendstr("");
-    //intrv = rec_time_margins(journal);
-    //sprintf(buffer, "4: Tme mrgns: start=%u, end=%u", intrv.start, intrv.end);
-    //sendstr(buffer);
-    //sprintf(buffer, "Svd mrgns: start=%u, end=%u", time_int.start, time_int.end);
-    //sendstr(buffer);
-
-
-    sendstr("");
-    sendstr("5: Final data:");
-    showlog(journal, time_int.start, time_int.end);
-
     h = rec_square(j, time_int);
-    sendstr("");
-    //sprintf(buffer, "6: Hardness: %u", rec_square(j, time_int));
-    itoa(h, buffer, 10);
-    sendstr(buffer);
-    if (h < hardness) {
-        sendstr("Rollback");
-        state |= ST_BACK;
-    }
-    else sendstr("OK");
-
-    sendstr("Anlsis end");
-
+    if (h < hardness) state |= ST_BACK;
 }
 
 // Soft stop - just remove ST_SPDUP bit
@@ -130,9 +63,7 @@ void motor_stop () {
 // PWM control routine
 ISR (TIMER0_OVF_vect) {
     unsigned char s = speed;    // remember current speed
-
     savelog(out_voltage());
-
     // Increase or decrease speed depending on ST_SPDUP
     if (state & ST_SPDUP) {
         if (speed < PWM_RES) speed++;
@@ -158,7 +89,6 @@ ISR (TIMER0_OVF_vect) {
         ACSR |= (1<<ACD);
         // Clear ST_MOVE flag
         state &= ~ST_MOVE;
-        sendstr("Motor stopped");
         if ((state & ST_DIR) && (state & ST_EDGE) && (!(state & ST_LEARN)) && (!(state & ST_TMOUT))) analyze(journal);
     }
 }
@@ -176,9 +106,8 @@ ISR (TIMER2_OVF_vect) {
         // Acting like current sensor triggered
         state |= ST_EDGE;
         // Immediate stop without soft spindown
-        //speed = 0;
+        if (!(state & ST_LEARN)) speed = 0;
         state &= ~(ST_SPDUP | ST_HOLD);
-        sendstr("Motor run timeout");
     }
 }
 
@@ -188,14 +117,11 @@ ISR (ANA_COMP_vect) {
     state |= ST_EDGE;
     speed = 0;
     state &= ~(ST_SPDUP | ST_HOLD);
-    sendstr("Current sensor");
 }
 
 void motor_start () {
-
     logptr = 0;
     logsize = 0;
-
     // Set up comparator input pins
     CMP_PORT &= ~((1<<AIN0) | (1<<AIN1));
     CMP_DDR  &= ~((1<<AIN0) | (1<<AIN1));
@@ -235,39 +161,31 @@ void motor_start () {
     duration = max_duration;
     TCCR2 = (1<<CS22) | (1<<CS21) | (1<<CS20);  // Set prescaling to 1/1024 ~ 30.5 overflows/sec
     TIMSK |= (1<<TOIE2);                        // Allow overflow interrupt
-    sendstr(state & ST_DIR ? "Mvng up" : "Mvng down");
 }
 
 void learn() {
     uint t = max_duration;
     interval intrv;
     uchar i;
-
     uint d[3], h[3];
     uchar s[3], e[3];
-
-    sendstr("Learn proc rquestd");
     max_duration = T_DURATION * 30.5;
     for (i=0; i<3; i++) {
         _delay_ms(500);
-        sendstr("1. Mv all the way dn");
         state &= ~(ST_DIR | ST_EDGE);
         motor_start();
         while (!(state & ST_EDGE));
         if (state & ST_TMOUT) {
-            sendstr("Didn't rch lwr edge - abrtng");
             max_duration = t;
             state = 0;
             return;
         }
         _delay_ms(500);
-        sendstr("2. Mv all the way up");
         state |= ST_DIR;
         state &= ~ST_EDGE;
         motor_start();
         while (!(state & ST_EDGE));
         if (state & ST_TMOUT) {
-            sendstr("Didn't rch uppr edge - abrtng");
             max_duration = t;
             state = 0;
             return;
@@ -282,67 +200,37 @@ void learn() {
         rec_relative(journal, intrv);
         h[i] = rec_square(journal, intrv);
     }
-
     t = median_int(d);
-    sprintf(buffer, "Msrd run time: %u tmr ovf, or %us", t, (uint)(t/30.5));
-    sendstr(buffer);
     if (t < T_MIN_DURATION * 30.5) {
-        sprintf(buffer, "this is lower than %us, aborting", T_MIN_DURATION);
-        sendstr(buffer);
         state = 0;
         return;
     }
     t += t/4;
-    sprintf(buffer, "Added 1/4 of spare time, now max_duration is %u or %us", t, (uint)(t/30.5));
-    sendstr(buffer);
-    sendstr("3. Save new value");
     eeprom_write_word((uint *) 1, t);
     max_duration = t;
-
     time_int.start = median(s);
     time_int.end = median(e);
-
-    sprintf(buffer, "Msrd vltge drop time itrvl: %u %u", time_int.start, time_int.end);
-    sendstr(buffer);
-
-    sendstr("Save values");
     eeprom_write_byte((uchar*) 3, time_int.start);
     eeprom_write_byte((uchar*) 4, time_int.end);
-
     hardness = median_int(h);
-    sprintf(buffer, "Msrd hardness: %u", hardness);
-    sendstr(buffer);
-    hardness -= hardness/10;
-    sprintf(buffer, "Save value: %u", hardness);
-    sendstr(buffer);
+    hardness += hardness/7;
     eeprom_write_word((uint*) 5, hardness);
-
     _delay_ms(500);
-    sendstr("4. Move halfway down");
     max_duration = t / 3;
     state &= ~(ST_DIR | ST_EDGE);
     motor_start();
     while(state & ST_MOVE);
     max_duration = t;
     state = 0;
-    sendstr("Learning finished");
 }
 
 void init_motor () {
     uint t;
     uchar start, end;
-    //sendstr("Init motor");
     t = eeprom_read_word((uint*) 1);
-    //sprintf(buffer, "Read EEPROM max_duration value: %u", t);
-    //sendstr(buffer);
     max_duration = ((t > (uint) (T_MIN_DURATION * 30.5)) && (t < (uint) (T_DURATION * 30.5))) ? t : T_DURATION * 30.5;
-    //sprintf(buffer, "Applied value: %u", max_duration);
-    //sendstr(buffer);
-
     start = eeprom_read_byte((uchar*) 3);
     end = eeprom_read_byte((uchar*) 4);
-    //sprintf(buffer, "Read EEPROM drop interval data: start=%u, end=%u", start, end);
-    //sendstr(buffer);
     if (((start == 0) || (start == 0xFF)) || (end == 0xFF)) {
         time_int.start = 0;
         time_int.end = REC_LG-1;
@@ -350,14 +238,7 @@ void init_motor () {
         time_int.start = start;
         time_int.end = end;
     }
-    //sprintf(buffer, "Applied values: %u %u", time_int.start, time_int.end);
-    //sendstr(buffer);
-
     t = eeprom_read_word((uint*) 5);
-    //sprintf(buffer, "Read hardness: %u", t);
-    //sendstr(buffer);
     if (t < 0xFFFF) hardness = t;
-    //sprintf(buffer, "Applied vaue: %u", hardness);
-
     if (state & ST_LEARN) learn();
 }

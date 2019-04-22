@@ -29,7 +29,7 @@ unsigned char poll_switch () {
     if (this & (1<<SW_0)) last |= dir ? CMD_UP : CMD_DN;
     if (this & (1<<SW_1)) last |= dir ? CMD_DN : CMD_UP;
     // Special command from the alarm system - close the window
-    //if (this & (1<<SW_2)) last = CMD_CLOSE;
+    if (this & (1<<SW_2)) last = CMD_CLOSE;
     return (last);
 }
 

@@ -13,6 +13,7 @@
 #include "fuses.h"
 #include "driver.h"
 
+// TODO: Make those two functions one
 // Move the window up
 void moveup () {
     if (state & ST_DIR) {           // if direction is the same in state
@@ -59,7 +60,7 @@ void hold () {
 void rollback () {
     uchar t;
     t = max_duration;
-    max_duration = t/4;
+    max_duration = t/6;
     state = 0;
     movedn();
     while (state & ST_MOVE);
@@ -88,15 +89,6 @@ void sleep () {
 int main () {
     // Allow global interrupts
     asm("sei");
-
-    #define BAUD 19200
-    #define UBRR_SET ((F_CPU/16/BAUD)-1)
-
-    UBRRH = (uchar) (UBRR_SET>>8);
-    UBRRL = (uchar) UBRR_SET;
-    UCSRB = (1<<TXEN);
-    UCSRC = (1<<URSEL) | (1<<UCSZ1) | (1<<UCSZ0);
-
     // Set up the idle mode
     MCUCR &= ~((1<<SM2) | (1<<SM1) | (1<<SM0));
     MCUCR |= (1<<SE);

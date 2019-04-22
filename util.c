@@ -10,22 +10,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-
-void sendchar(uchar c) {
-    while (!(UCSRA & (1<<UDRE)));
-    UDR = c;
-}
-
-void sendstr(char str[]) {
-    uchar i = 0;
-    while (str[i] != 0) {
-        sendchar(str[i]);
-        i++;
-    }
-    sendchar(0x0d);
-    sendchar(0x0a);
-}
-
 void rec_wrap (uchar j[], uchar pos) {
     uchar i, t;
     while (pos < REC_LG) {
@@ -36,6 +20,13 @@ void rec_wrap (uchar j[], uchar pos) {
         j[0] = t;
         pos++;
     }
+}
+
+uint min_int (uint w[3]) {
+    uint m = 0xFFFF;
+    uint i;
+    for (i=0; i<3; i++) if (m > w[i]) m = w[i];
+    return m;
 }
 
 uchar median (uchar w[3]) {
@@ -100,10 +91,10 @@ interval rec_time_margins(uchar j[]) {
         }
     }
     if ((start && end) && ((end-start) > 4)) {
-        //res.start = start > 0 ? start - 1 : start;
-        //res.end = end < REC_LG-1 ? end + 1 : end;
-        res.start = start + 1;
-        res.end = end -1;
+        res.start = start > 0 ? start - 1 : start;
+        res.end = end < REC_LG-1 ? end + 1 : end;
+        //res.start = start > 5 ? start - 5 : 0;
+        //res.end = end < (REC_LG - 4) ? end + 3 : REC_LG - 1;
     }
     return res;
 }
