@@ -34,6 +34,7 @@ record journal;                     // motor voltage log
 uchar logptr = 0;                   // last log record index
 uchar logsize = 0;                  // size of the last log
 interval time_int = {0, REC_LG-1};  // voltage drop measurement interval
+interval full_int = {0, REC_LG-1];  // full interval
 uint hardness = 0;                  // measured voltage drop function square
 uchar voltage_normal = 0;           // measured motor voltage during run
 
@@ -50,10 +51,9 @@ void analyze (uchar j[]) {
     rec_wrap(journal, logptr);
     rec_filter(journal, 1);
     rec_filter(journal, 0);
-    dv = /**(time_int.end - time_int.start) **/ (voltage_normal - rec_volt_margins(journal, time_int).end);
-    dv *= 5;
+    dv = voltage_normal - rec_volt_margins(journal, full_int).end;
     rec_relative(journal, time_int);
-    h = rec_square(j, time_int) + dv;
+    h = rec_hardness_slope(j, time_int);// + dv;
     if (h < hardness) state |= ST_BACK;
 }
 
@@ -210,7 +210,7 @@ void learn() {
         s[i] = intrv.start;                         // ...and store them
         e[i] = intrv.end;
         rec_relative(journal, intrv);               // make the log zero-relative
-        h[i] = rec_square(journal, intrv);          // find the "hardness" of window border
+        h[i] = rec_hardness_slope(journal, intrv);          // find the "hardness" of window border
     }
     t = median_int(d);
     if (t < T_MIN_DURATION * 30.5) {
@@ -225,7 +225,7 @@ void learn() {
     eeprom_write_byte((uchar*) 3, time_int.start);
     eeprom_write_byte((uchar*) 4, time_int.end);
     hardness = median_int(h);
-    hardness -= hardness/13; // 14
+    //hardness -= hardness/10;
     eeprom_write_word((uint*) 5, hardness);
     voltage_normal = median(v);
     eeprom_write_byte((uchar*) 7, voltage_normal);

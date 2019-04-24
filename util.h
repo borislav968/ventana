@@ -16,6 +16,7 @@ void rec_filter (uchar j[], uchar med);
 void rec_relative (uchar j[], interval intrv);
 interval rec_volt_margins(uchar j[], interval intrv);
 interval rec_time_margins(uchar j[]);
-uint rec_square (uchar j[], interval intrv);
+uint rec_hardness (uchar j[], interval intrv);
+uint rec_hardness_slope (uchar j[], interval intrv);
 
 #endif

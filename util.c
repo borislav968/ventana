@@ -65,6 +65,7 @@ interval rec_volt_margins(uchar j[], interval intrv) {
     return res;
 }
 
+# define SLOPE 2
 interval rec_time_margins(uchar j[]) {
     interval res = {0, REC_LG-1};
     uchar i, k, cnt;
@@ -72,7 +73,7 @@ interval rec_time_margins(uchar j[]) {
     uchar end = 0;
     for (i=REC_LG-1; i>4; i--) {
         cnt = 0;
-        for (k=0; k<5; k++) if (j[i-k-1] - j[i-k] > 2) cnt++;
+        for (k=0; k<5; k++) if (j[i-k-1] - j[i-k] > SLOPE) cnt++;
         if (cnt == 5) {
             end = i;
             break;
@@ -82,7 +83,7 @@ interval rec_time_margins(uchar j[]) {
         for (i=end; i>4; i--) {
             cnt = 0;
             for (k=0; k<5; k++) {
-                if(j[i-k-1] - j[i-k] < 2) cnt++;
+                if(j[i-k-1] - j[i-k] < SLOPE) cnt++;
             }
             if (cnt == 5) {
                 start = i;
@@ -91,12 +92,10 @@ interval rec_time_margins(uchar j[]) {
         }
     }
     if ((start && end) && ((end - start) > 4)) {
-        res.start = start > 0 ? start - 1 : start;
-        res.end = end < REC_LG-1 ? end + 1 : end;
-        //res.start = start > 5 ? start - 5 : 0;
-        //res.end = end < (REC_LG - 4) ? end + 3 : REC_LG - 1;
-        res.start += 1;
-        res.end -= 1;
+        //res.start = start > 0 ? start - 1 : start;
+        //res.end = end < REC_LG-1 ? end + 1 : end;
+        res.start = start;
+        res.end = end;
     }
     return res;
 }
@@ -121,9 +120,15 @@ void rec_filter (uchar j[], uchar med) {
     }
 }
 
-uint rec_square (uchar j[], interval intrv) {
+uint rec_hardness (uchar j[], interval intrv) {
     uchar i;
     uint res = 0;
     for (i=intrv.start; i<intrv.end; i++) res += j[i];
+    return res;
+}
+
+uint rec_hardness_slope (uchar j[], interval intrv) {
+    uint res;
+    res = j[intrv.start] - j[intrv.end];
     return res;
 }
