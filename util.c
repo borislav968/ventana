@@ -90,11 +90,13 @@ interval rec_time_margins(uchar j[]) {
             }
         }
     }
-    if ((start && end) && ((end-start) > 4)) {
+    if ((start && end) && ((end - start) > 4)) {
         res.start = start > 0 ? start - 1 : start;
         res.end = end < REC_LG-1 ? end + 1 : end;
         //res.start = start > 5 ? start - 5 : 0;
         //res.end = end < (REC_LG - 4) ? end + 3 : REC_LG - 1;
+        res.start += 1;
+        res.end -= 1;
     }
     return res;
 }

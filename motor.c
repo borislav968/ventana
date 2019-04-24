@@ -45,12 +45,15 @@ void savelog (uchar v) {
 
 void analyze (uchar j[]) {
     uint h;
+    signed int dv = 0;
     if (logsize < (REC_LG - time_int.start) || ((max_duration - duration) < 20)) return;
     rec_wrap(journal, logptr);
     rec_filter(journal, 1);
     rec_filter(journal, 0);
+    dv = /**(time_int.end - time_int.start) **/ (voltage_normal - rec_volt_margins(journal, time_int).end);
+    dv *= 5;
     rec_relative(journal, time_int);
-    h = rec_square(j, time_int);
+    h = rec_square(j, time_int) + dv;
     if (h < hardness) state |= ST_BACK;
 }
 
@@ -222,7 +225,7 @@ void learn() {
     eeprom_write_byte((uchar*) 3, time_int.start);
     eeprom_write_byte((uchar*) 4, time_int.end);
     hardness = median_int(h);
-    hardness -= hardness/10;
+    hardness -= hardness/13; // 14
     eeprom_write_word((uint*) 5, hardness);
     voltage_normal = median(v);
     eeprom_write_byte((uchar*) 7, voltage_normal);
@@ -256,8 +259,8 @@ void init_motor () {
     t = eeprom_read_word((uint*) 5);
     if (t < 0xFFFF) hardness = t;
     // voltage_normal
-    //t = eeprom_read_byte((uchar*) 7);
-    //voltage_normal = ((t > 120) && (t < 200)) ? t : 146;
+    t = eeprom_read_byte((uchar*) 7);
+    voltage_normal = ((t > 70) && (t < 200)) ? t : 146;
     // start calibration routine if requested by switch state during power-up
     if (state & ST_LEARN) learn();
     //motor_start();
