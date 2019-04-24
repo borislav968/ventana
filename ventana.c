@@ -15,6 +15,7 @@
 
 // TODO: Make those two functions one
 // Move the window up
+/**
 void moveup () {
     if (state & ST_DIR) {           // if direction is the same in state
         if ((state & ST_EDGE) || (state & ST_HOLD)) return; // do nothing if it already has reached the edge
@@ -51,6 +52,29 @@ void movedn () {
     state &= ~ST_DIR;               // start motor in needed direction
     motor_start();
 }
+**/
+
+// Experimental
+void move (uchar direction) {
+    //if (direction) direction = ST_DIR;
+    if (direction ? (state & ST_DIR) : (!(state & ST_DIR))) {           // if direction is the same in state
+        if ((state & ST_EDGE) || (state & ST_HOLD)) return; // do nothing if it already has reached the edge
+        if (state & ST_MOVE) {      // restart motor if it was in spindown state
+            state |= ST_SPDUP;
+            return;
+        }
+    }
+    if (state & ST_MOVE) {          // if direction was other in state
+        state &= ~ST_HOLD;
+        motor_stop();               // spin the motor down
+        while (speed) {};           // wait for it to stop
+    }
+    state &= ~(ST_EDGE | ST_HOLD);  // clear edge and hold flags
+    if (direction) state |= ST_DIR; else state &= ~ST_DIR;
+    state = direction ? (state | ST_DIR) : (state & ~ST_DIR);             // start motor in needed direction
+    motor_start();
+}
+
 
 // Enter 'hold' mode - now motor will continue working even if no input from switch
 void hold () {
@@ -61,8 +85,9 @@ void rollback () {
     uchar t;
     t = max_duration;
     max_duration = t/6;
-    state = 0;
-    movedn();
+    state &= ~(ST_DIR | ST_EDGE);
+    //movedn();
+    move(0);
     while (state & ST_MOVE);
     max_duration = t;
     state = 0;
@@ -87,6 +112,7 @@ void sleep () {
 }
 
 int main () {
+    unsigned char input = 0, prev = 0;
     // Allow global interrupts
     asm("sei");
     // Set up the idle mode
@@ -98,23 +124,25 @@ int main () {
     init_motor();
     ACSR |= (1<<ACD);   // Disable analog comparator for energy saving when idle
 
-    unsigned char input = 0, prev = 0;
     while (1) {
         if (state & ST_BACK) rollback();
         input = poll_switch();  // Poll current command from switch
         if (input != prev) {    // Do nothing if it didn't change
             switch (input) {
                 case CMD_UP:    // Move up
-                    moveup();
+                    //moveup();
+                    move(1);
                     break;
                 case CMD_DN:    // Move down
-                    movedn();
+                    //movedn();
+                    move(0);
                     break;
                 case CMD_HOLD:  // Enable 'hold' mode
                     hold();
                     break;
                 case CMD_CLOSE: // Move up and Hold together - for the alarm system which will close the windows
-                    moveup();
+                    //moveup();
+                    move(1);
                     hold();
                     break;
                 case 0:         // No commands - if not in 'hold' state, stop the motor
@@ -127,7 +155,7 @@ int main () {
                     motor_stop();
             }
             prev = input;
-        } else if (!(input || speed)) sleep(); // go to idle mode if nothing is happening
+        } //else if (!(input || speed)) sleep(); // go to idle mode if nothing is happening
     }
 }
 

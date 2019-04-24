@@ -32,7 +32,7 @@ $(BUILD)/$(PROJECT).hex: $(BUILD)/$(PROJECT).elf
 	$(OBJCOPY) -j .text -j .data -O ihex $(BUILD)/$(PROJECT).elf $(BUILD)/$(PROJECT).hex
 
 flash:	$(BUILD)/$(PROJECT).hex
-	$(AVRDUDE) -V -U flash:w:$(BUILD)/$(PROJECT).hex:i
+	$(AVRDUDE) -U flash:w:$(BUILD)/$(PROJECT).hex:i
 
 verify:	$(BUILD)/$(PROJECT).hex
 	$(AVRDUDE) -U flash:v:$(BUILD)/$(PROJECT).hex:i

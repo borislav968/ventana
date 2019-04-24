@@ -34,7 +34,7 @@ void adc (uchar on) {
     if (on) {
         DDR_ADC &= ~((1<<ADC_L) | (1<<ADC_R));
         PORT_ADC &= ~((1<<ADC_L) | (1<<ADC_R));
-        ADCSRA = (1<<ADEN) | (1<<ADPS2);
+        ADCSRA = (1<<ADEN) | (1<<ADPS2) | (1<<ADPS1);
         ADMUX = (1<<REFS0) | (1<<ADLAR);
     } else {
         ADMUX = 0;

@@ -28,13 +28,14 @@ volatile uint duration;
 // Maximum motor run duration
 volatile uint max_duration;
 
-char buffer[50];
+//char buffer[50];
 
-record journal;
-uchar logptr = 0;
-uchar logsize = 0;
-interval time_int = {0, REC_LG-1};
-uint hardness = 0;
+record journal;                     // motor voltage log
+uchar logptr = 0;                   // last log record index
+uchar logsize = 0;                  // size of the last log
+interval time_int = {0, REC_LG-1};  // voltage drop measurement interval
+uint hardness = 0;                  // measured voltage drop function square
+uchar voltage_normal = 0;           // measured motor voltage during run
 
 void savelog (uchar v) {
     journal[logptr] = v;
@@ -106,7 +107,7 @@ ISR (TIMER2_OVF_vect) {
         // Acting like current sensor triggered
         state |= ST_EDGE;
         // Immediate stop without soft spindown
-        if (!(state & ST_LEARN)) speed = 0;
+        if (!((state & ST_LEARN) || (state & ST_BACK))) speed = 0;
         state &= ~(ST_SPDUP | ST_HOLD);
     }
 }
@@ -166,39 +167,47 @@ void motor_start () {
 void learn() {
     uint t = max_duration;
     interval intrv;
-    uchar i;
-    uint d[3], h[3];
-    uchar s[3], e[3];
-    max_duration = T_DURATION * 30.5;
-    for (i=0; i<3; i++) {
+    uchar i, j; // counters
+    // vars to store measured values during 3-time calibration run
+    uint d[3];  // run duration from lower to upper position
+    uint h[3];  // hardness
+    uchar s[3]; // interval start
+    uchar e[3]; // interval end
+    uchar v[3]; // max voltage
+    max_duration = T_DURATION * 30.5;               // apply default max_duration to detect if the window reaches its margins earlier than this
+    for (i=0; i<3; i++) {                           // make the test run in cycle for 3 times
         _delay_ms(500);
-        state &= ~(ST_DIR | ST_EDGE);
+        for (j=0; j<REC_LG; j++) journal[j] = 0;    // zero all the log to make max voltage measurement accurate
+        state &= ~(ST_DIR | ST_EDGE);               // start moving window down
         motor_start();
-        while (!(state & ST_EDGE));
-        if (state & ST_TMOUT) {
+        while (!(state & ST_EDGE));                 // wait until it stops
+        if (state & ST_TMOUT) {                     // if it has stopped by timeout, abort calibration
             max_duration = t;
             state = 0;
             return;
         }
         _delay_ms(500);
-        state |= ST_DIR;
+        state |= ST_DIR;                            // start moving window up
         state &= ~ST_EDGE;
         motor_start();
-        while (!(state & ST_EDGE));
-        if (state & ST_TMOUT) {
+        while (!(state & ST_EDGE));                 // wait until it stops
+        if (state & ST_TMOUT) {                     // if it is stopped by timeout, abort calibraiton
             max_duration = t;
             state = 0;
             return;
         }
-        d[i] = max_duration - duration;
-        rec_wrap(journal, logptr);
+        d[i] = max_duration - duration;             // store measured duration
+        rec_wrap(journal, logptr);                  // filter the log
         rec_filter(journal, 1);
         rec_filter(journal, 0);
-        intrv = rec_time_margins(journal);
-        s[i] = intrv.start;
+        intrv.start = 0;                            // set the interval to full
+        intrv.end = REC_LG - 1;
+        v[i] = rec_volt_margins(journal, intrv).end;    // and find the maximum motor voltage during run
+        intrv = rec_time_margins(journal);          // find the voltage drop margins
+        s[i] = intrv.start;                         // ...and store them
         e[i] = intrv.end;
-        rec_relative(journal, intrv);
-        h[i] = rec_square(journal, intrv);
+        rec_relative(journal, intrv);               // make the log zero-relative
+        h[i] = rec_square(journal, intrv);          // find the "hardness" of window border
     }
     t = median_int(d);
     if (t < T_MIN_DURATION * 30.5) {
@@ -213,8 +222,10 @@ void learn() {
     eeprom_write_byte((uchar*) 3, time_int.start);
     eeprom_write_byte((uchar*) 4, time_int.end);
     hardness = median_int(h);
-    hardness += hardness/7;
+    hardness -= hardness/10;
     eeprom_write_word((uint*) 5, hardness);
+    voltage_normal = median(v);
+    eeprom_write_byte((uchar*) 7, voltage_normal);
     _delay_ms(500);
     max_duration = t / 3;
     state &= ~(ST_DIR | ST_EDGE);
@@ -224,11 +235,14 @@ void learn() {
     state = 0;
 }
 
+// must be run after power-up - reads motor-related settings from the EEPROM
 void init_motor () {
     uint t;
     uchar start, end;
+    // max_duration
     t = eeprom_read_word((uint*) 1);
     max_duration = ((t > (uint) (T_MIN_DURATION * 30.5)) && (t < (uint) (T_DURATION * 30.5))) ? t : T_DURATION * 30.5;
+    // voltage drop interval
     start = eeprom_read_byte((uchar*) 3);
     end = eeprom_read_byte((uchar*) 4);
     if (((start == 0) || (start == 0xFF)) || (end == 0xFF)) {
@@ -238,7 +252,13 @@ void init_motor () {
         time_int.start = start;
         time_int.end = end;
     }
+    // hardness
     t = eeprom_read_word((uint*) 5);
     if (t < 0xFFFF) hardness = t;
+    // voltage_normal
+    //t = eeprom_read_byte((uchar*) 7);
+    //voltage_normal = ((t > 120) && (t < 200)) ? t : 146;
+    // start calibration routine if requested by switch state during power-up
     if (state & ST_LEARN) learn();
+    //motor_start();
 }
