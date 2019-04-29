@@ -28,13 +28,11 @@ volatile uint duration;
 // Maximum motor run duration
 volatile uint max_duration;
 
-//char buffer[50];
-
 record journal;                     // motor voltage log
 uchar logptr = 0;                   // last log record index
 uchar logsize = 0;                  // size of the last log
 interval time_int = {0, REC_LG-1};  // voltage drop measurement interval
-interval full_int = {0, REC_LG-1];  // full interval
+interval full_int = {0, REC_LG-1};  // full interval
 uint hardness = 0;                  // measured voltage drop function square
 uchar voltage_normal = 0;           // measured motor voltage during run
 
@@ -47,13 +45,16 @@ void savelog (uchar v) {
 void analyze (uchar j[]) {
     uint h;
     signed int dv = 0;
+    interval volt_int;
     if (logsize < (REC_LG - time_int.start) || ((max_duration - duration) < 20)) return;
     rec_wrap(journal, logptr);
     rec_filter(journal, 1);
     rec_filter(journal, 0);
-    dv = voltage_normal - rec_volt_margins(journal, full_int).end;
+    volt_int.start = REC_LG - logsize;
+    volt_int.end = REC_LG - 1;
+    dv = (voltage_normal - rec_volt_margins(journal, volt_int).end) * 10;
     rec_relative(journal, time_int);
-    h = rec_hardness_slope(j, time_int);// + dv;
+    h = rec_hardness(j, time_int) + dv;
     if (h < hardness) state |= ST_BACK;
 }
 
@@ -203,14 +204,12 @@ void learn() {
         rec_wrap(journal, logptr);                  // filter the log
         rec_filter(journal, 1);
         rec_filter(journal, 0);
-        intrv.start = 0;                            // set the interval to full
-        intrv.end = REC_LG - 1;
-        v[i] = rec_volt_margins(journal, intrv).end;    // and find the maximum motor voltage during run
+        v[i] = rec_volt_margins(journal, full_int).end;    // and find the maximum motor voltage during run
         intrv = rec_time_margins(journal);          // find the voltage drop margins
         s[i] = intrv.start;                         // ...and store them
         e[i] = intrv.end;
         rec_relative(journal, intrv);               // make the log zero-relative
-        h[i] = rec_hardness_slope(journal, intrv);          // find the "hardness" of window border
+        h[i] = rec_hardness(journal, intrv);          // find the "hardness" of window border
     }
     t = median_int(d);
     if (t < T_MIN_DURATION * 30.5) {
@@ -225,7 +224,7 @@ void learn() {
     eeprom_write_byte((uchar*) 3, time_int.start);
     eeprom_write_byte((uchar*) 4, time_int.end);
     hardness = median_int(h);
-    //hardness -= hardness/10;
+    hardness -= hardness/8;
     eeprom_write_word((uint*) 5, hardness);
     voltage_normal = median(v);
     eeprom_write_byte((uchar*) 7, voltage_normal);

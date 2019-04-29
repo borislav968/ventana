@@ -121,14 +121,7 @@ void rec_filter (uchar j[], uchar med) {
 }
 
 uint rec_hardness (uchar j[], interval intrv) {
-    uchar i;
-    uint res = 0;
-    for (i=intrv.start; i<intrv.end; i++) res += j[i];
-    return res;
-}
-
-uint rec_hardness_slope (uchar j[], interval intrv) {
     uint res;
-    res = j[intrv.start] - j[intrv.end];
+    res = (j[intrv.start] - j[intrv.end]) * 10;
     return res;
 }
